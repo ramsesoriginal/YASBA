@@ -129,7 +129,7 @@ uv run ruff check .
 - Logo source of truth: `assets/branding/logo.svg`
 - Generated app icons: `assets/branding/icons/`
 - Regeneration script: `scripts/generate_icons.py`
-- Static branding preview: `docs/brand/preview/`
+- Static branding preview: `docs/branding/styleguide.html` (open in browser)
 
 Design intent:
 > *Calm, trustworthy, editorial, and boringly reliable.*
@@ -157,7 +157,7 @@ This keeps architectural intent explicit and reviewable.
 
 This is currently a **solo, portfolio-driven project**, but contributions and discussions are welcome.
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for guidelines (to be added).
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for guidelines.
 
 ---
 
