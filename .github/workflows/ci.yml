@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend (lint/test/build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup toolchain (mise)
+        uses: jdx/mise-action@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node (cache pnpm)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Enable Corepack (pnpm)
+        run: corepack enable
+
+      - name: Install deps
+        run: pnpm -C frontend install --frozen-lockfile
+
+      # If you already have eslint scripts wired, keep these.
+      # Otherwise leave them for the next item and only build for now.
+      - name: Lint
+        run: pnpm -C frontend run lint --if-present
+
+      - name: Test
+        run: pnpm -C frontend run test --if-present
+
+      - name: Build
+        run: pnpm -C frontend run build
+
+  backend:
+    name: Backend (lint/typecheck/tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup toolchain (mise)
+        uses: jdx/mise-action@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Sync deps (locked)
+        working-directory: backend
+        run: uv sync --locked
+
+      - name: Ruff (lint)
+        working-directory: backend
+        run: uv run ruff check .
+
+      - name: Ruff (format check)
+        working-directory: backend
+        run: uv run ruff format --check .
+
+      # Keep mypy/pytest optional at Phase 0 if you want them later.
+      - name: Mypy
+        working-directory: backend
+        run: uv run mypy .
+        continue-on-error: true
+
+      - name: Pytest
+        working-directory: backend
+        run: uv run pytest -q
+        continue-on-error: true
