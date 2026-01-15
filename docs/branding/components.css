@@ -1,0 +1,424 @@
+/* YASBA - components.css - v0.1 */
+
+/* Reusable UI primitives/components for the app.
+   Assumes load order:
+   normalize.css -> branding.css -> layout.css -> components.css
+   Token-driven, low-specificity, framework-agnostic. */
+
+/* ------------------------------ */
+/* Focus ring helper (component-level fallback) */
+/* ------------------------------ */
+.focusable:focus-visible,
+.btn:focus-visible,
+.control:focus-visible,
+.select:focus-visible,
+.textarea:focus-visible,
+.nav__link:focus-visible {
+  outline: var(--focus-ring) solid color-mix(in oklab, var(--brand-primary), white 20%);
+  outline-offset: var(--focus-offset);
+}
+
+/* ------------------------------ */
+/* Buttons */
+/* ------------------------------ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+
+  min-height: 2.5rem; /* ~40px hit target */
+  padding: 0.6rem 0.9rem;
+
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  color: var(--color-text);
+
+  font-weight: var(--fw-medium);
+  line-height: 1;
+
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+
+  transition:
+    background var(--dur-med) var(--ease-standard),
+    border-color var(--dur-med) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-standard);
+}
+
+.btn:hover {
+  background: color-mix(in oklab, var(--color-surface-2), var(--color-bg) 30%);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  border-color: color-mix(in oklab, var(--brand-primary), transparent 55%);
+  background: var(--brand-primary);
+  color: var(--on-solid);
+}
+
+.btn--primary:hover {
+  background: color-mix(in oklab, var(--brand-primary), black 10%);
+}
+
+.btn--secondary {
+  border-color: color-mix(in oklab, var(--brand-primary), transparent 55%);
+  background: transparent;
+}
+
+.btn--secondary:hover {
+  background: color-mix(in oklab, var(--brand-primary), transparent 92%);
+}
+
+.btn--ghost {
+  border-color: transparent;
+  background: transparent;
+}
+
+.btn--ghost:hover {
+  border-color: var(--color-border);
+  background: color-mix(in oklab, var(--color-surface), var(--color-bg) 55%);
+}
+
+/* Button icon sizing */
+.btn__icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: 0 0 auto;
+}
+
+/* ------------------------------ */
+/* Form primitives */
+/* ------------------------------ */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.field__label {
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  font-weight: var(--fw-medium);
+}
+
+.field__row {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Controls: input/select/textarea */
+.control {
+  width: 100%;
+  min-height: 2.5rem; /* ~40px hit target */
+
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius-md);
+
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+
+  font: inherit;
+  line-height: 1.2;
+}
+
+.control::placeholder {
+  color: var(--color-faint);
+}
+
+.control:disabled,
+.control[aria-disabled="true"] {
+  opacity: 0.65;
+  cursor: not-allowed;
+  background: color-mix(in oklab, var(--color-bg), var(--color-surface) 40%);
+}
+
+.control[readonly] {
+  background: color-mix(in oklab, var(--color-bg), var(--color-surface) 35%);
+}
+
+/* Select can be styled using same class (applied to <select>) */
+select.control {
+  padding-right: 2.25rem;
+}
+
+/* Textarea sizing */
+textarea.control {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+/* Help/hint/error text */
+.hint,
+.help {
+  font-size: var(--text-sm);
+  color: var(--color-faint);
+}
+
+.error {
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
+/* Inline validation states for controls (border tint; never color-only meaning) */
+.control[data-state="success"] {
+  border-color: color-mix(in oklab, var(--color-success), transparent 55%);
+}
+.control[data-state="warning"] {
+  border-color: color-mix(in oklab, var(--color-warning), transparent 55%);
+}
+.control[data-state="danger"] {
+  border-color: color-mix(in oklab, var(--color-danger), transparent 55%);
+}
+.control[data-state="info"] {
+  border-color: color-mix(in oklab, var(--color-info), transparent 55%);
+}
+
+/* Fieldset/legend (minimal, calm) */
+.fieldset {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--color-surface), var(--color-bg) 50%);
+  padding: var(--space-3) var(--space-4);
+}
+
+.fieldset__legend {
+  padding: 0 var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+  color: var(--color-muted);
+}
+
+/* Checkbox / radio alignment (no custom controls) */
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.choice input[type="checkbox"],
+.choice input[type="radio"] {
+  inline-size: 1.05rem;
+  block-size: 1.05rem;
+}
+
+/* ------------------------------ */
+/* Callouts (icon + text pattern) */
+/* ------------------------------ */
+
+.callout {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-3);
+
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.callout__icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: 0 0 auto;
+  margin-top: 0.15rem;
+}
+
+.callout__title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+}
+
+.callout__body {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
+/* Tone mapping (color assists; content must include icon + title text) */
+.callout[data-tone="info"] {
+  background: var(--tint-info);
+  border-color: color-mix(in oklab, var(--color-info), transparent 72%);
+}
+
+.callout[data-tone="success"] {
+  background: var(--tint-success);
+  border-color: color-mix(in oklab, var(--color-success), transparent 70%);
+}
+
+.callout[data-tone="warning"] {
+  background: var(--tint-warning);
+  border-color: color-mix(in oklab, var(--color-warning), transparent 70%);
+}
+
+.callout[data-tone="danger"] {
+  background: var(--tint-danger);
+  border-color: color-mix(in oklab, var(--color-danger), transparent 72%);
+}
+
+/* ------------------------------ */
+/* Validation block (form-level feedback) */
+/* ------------------------------ */
+
+.validation {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.validation__icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: 0 0 auto;
+  margin-top: 0.15rem;
+}
+
+.validation__title {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  margin: 0 0 0.1rem;
+}
+
+.validation__text {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
+.validation[data-tone="success"] {
+  background: var(--tint-success);
+  border-color: color-mix(in oklab, var(--color-success), transparent 70%);
+}
+
+.validation[data-tone="info"] {
+  background: var(--tint-info);
+  border-color: color-mix(in oklab, var(--color-info), transparent 72%);
+}
+
+.validation[data-tone="warning"] {
+  background: var(--tint-warning);
+  border-color: color-mix(in oklab, var(--color-warning), transparent 70%);
+}
+
+.validation[data-tone="danger"] {
+  background: var(--tint-danger);
+  border-color: color-mix(in oklab, var(--color-danger), transparent 72%);
+}
+
+/* ------------------------------ */
+/* Sidebar nav pattern (optional, pays rent for app shell) */
+/* ------------------------------ */
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.nav__link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: color-mix(in oklab, var(--color-surface), var(--color-bg) 50%);
+
+  color: inherit;
+  text-decoration: none;
+}
+
+.nav__link:hover {
+  background: color-mix(in oklab, var(--color-surface), var(--color-bg) 30%);
+}
+
+.nav__link[aria-current="page"] {
+  border-color: color-mix(in oklab, var(--brand-primary), transparent 55%);
+  background: color-mix(in oklab, var(--color-surface), var(--brand-primary) 6%);
+}
+
+/* ------------------------------ */
+/* Reduced motion */
+/* ------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  .btn {
+    transition: none;
+  }
+}
+
+/* ------------------------------ */
+/* Expected Markup Patterns (minimal examples) */
+/* ------------------------------ */
+
+/*
+Buttons:
+  <button class="btn btn--primary">Save</button>
+  <button class="btn btn--secondary">Cancel</button>
+  <button class="btn btn--ghost" aria-disabled="true">More</button>
+
+Fields:
+  <div class="field">
+    <label class="field__label" for="amount">Amount</label>
+    <input class="control numeric" id="amount" type="number" />
+    <div class="hint">Tabular numerals for alignment.</div>
+    <div class="error" role="alert">Amount is required.</div>
+  </div>
+
+Fieldset + choices:
+  <fieldset class="fieldset">
+    <legend class="fieldset__legend">Type</legend>
+    <label class="choice"><input type="radio" name="t" /> Expense</label>
+    <label class="choice"><input type="radio" name="t" /> Income</label>
+  </fieldset>
+
+Callout:
+  <div class="callout" data-tone="info" role="note">
+    <svg class="callout__icon" aria-hidden="true">...</svg>
+    <div>
+      <h3 class="callout__title">Info</h3>
+      <p class="callout__body">Planning and reality are separate.</p>
+    </div>
+  </div>
+
+Validation:
+  <div class="validation" data-tone="warning" role="alert">
+    <svg class="validation__icon" aria-hidden="true">...</svg>
+    <div>
+      <span class="validation__title">Check this</span>
+      <p class="validation__text">Amount exceeds available.</p>
+    </div>
+  </div>
+
+Sidebar nav:
+  <nav class="nav" aria-label="Primary">
+    <a class="nav__link" href="#" aria-current="page">Budget</a>
+    <a class="nav__link" href="#">Transactions</a>
+  </nav>
+*/

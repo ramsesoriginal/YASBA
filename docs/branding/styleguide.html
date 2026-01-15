@@ -1,0 +1,936 @@
+<!-- YASBA — styleguide.html — v0.3 -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>YASBA Design System — Styleguide</title>
+
+    <!-- CSS order (strict) -->
+    <link rel="stylesheet" href="normalize.css" />
+    <link rel="stylesheet" href="branding.css" />
+    <link rel="stylesheet" href="layout.css" />
+    <link rel="stylesheet" href="components.css" />
+  </head>
+
+  <body>
+    <a class="skip-link focusable" href="#main">Skip to main content</a>
+
+    <div class="app-shell">
+      <header class="app-header" role="banner">
+        <div class="container split">
+          <div class="cluster">
+            <!-- Inline SVG logo (icon mark) -->
+            <svg
+              width="40"
+              height="40"
+              viewBox="0 0 96 96"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+              focusable="false">
+              <rect x="8" y="8" width="80" height="80" rx="16" fill="var(--brand-primary)" />
+              <rect x="28" y="28" width="8" height="40" rx="4" fill="var(--on-solid)" />
+              <rect x="44" y="22" width="8" height="46" rx="4" fill="var(--on-solid)" />
+              <rect x="60" y="32" width="8" height="36" rx="4" fill="var(--on-solid)" />
+            </svg>
+
+            <div class="stack">
+              <h1>YASBA Design System</h1>
+              <p class="text-faint">Calm, premium, accessible UI foundations — static reference</p>
+            </div>
+          </div>
+
+          <div class="cluster">
+            <div class="field">
+              <label class="field__label" for="themeSelect">Theme</label>
+              <select id="themeSelect" class="control" aria-label="Theme selection">
+                <option value="system">System</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </div>
+
+            <button type="button" class="btn btn--ghost" id="cycleTheme">
+              Cycle
+              <span class="sr-only">(system → light → dark)</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div class="app-body">
+        <aside class="app-sidebar" aria-label="Sidebar navigation">
+          <nav class="nav" aria-label="Primary">
+            <a class="nav__link" href="#typography" aria-current="page">Typography</a>
+            <a class="nav__link" href="#layout">Layout</a>
+            <a class="nav__link" href="#components">Components</a>
+            <a class="nav__link" href="#data">Data</a>
+            <a class="nav__link" href="#a11y">Accessibility</a>
+            <a class="nav__link" href="#print">Print</a>
+          </nav>
+        </aside>
+
+        <main class="app-main" id="main" role="main">
+          <div class="container stack">
+            <!-- OVERVIEW -->
+            <section aria-labelledby="overview-title" class="stack">
+              <h2 id="overview-title">Overview</h2>
+
+              <div class="surface-raised stack pad-x-md pad-y-md">
+                <p class="text-muted">
+                  This page is a visual reference and regression check for YASBA’s design system. It
+                  prioritizes <strong>clarity</strong>, <strong>predictable structure</strong>, and
+                  <strong>accessible affordances</strong>.
+                </p>
+
+                <p>
+                  Example link:
+                  <a href="#data">jump to data presentation</a>. Inline code:
+                  <code class="numeric">project_month(events, month)</code>.
+                </p>
+
+                <div class="stack">
+                  <h3>Icon mark scaling</h3>
+
+                  <div class="cluster" aria-label="Logo scaling examples">
+                    <div class="stack">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 96 96"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true">
+                        <rect
+                          x="8"
+                          y="8"
+                          width="80"
+                          height="80"
+                          rx="16"
+                          fill="var(--brand-primary)" />
+                        <rect x="28" y="28" width="8" height="40" rx="4" fill="var(--on-solid)" />
+                        <rect x="44" y="22" width="8" height="46" rx="4" fill="var(--on-solid)" />
+                        <rect x="60" y="32" width="8" height="36" rx="4" fill="var(--on-solid)" />
+                      </svg>
+                      <span class="text-faint">16</span>
+                    </div>
+
+                    <div class="stack">
+                      <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 96 96"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true">
+                        <rect
+                          x="8"
+                          y="8"
+                          width="80"
+                          height="80"
+                          rx="16"
+                          fill="var(--brand-primary)" />
+                        <rect x="28" y="28" width="8" height="40" rx="4" fill="var(--on-solid)" />
+                        <rect x="44" y="22" width="8" height="46" rx="4" fill="var(--on-solid)" />
+                        <rect x="60" y="32" width="8" height="36" rx="4" fill="var(--on-solid)" />
+                      </svg>
+                      <span class="text-faint">24</span>
+                    </div>
+
+                    <div class="stack">
+                      <svg
+                        width="32"
+                        height="32"
+                        viewBox="0 0 96 96"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true">
+                        <rect
+                          x="8"
+                          y="8"
+                          width="80"
+                          height="80"
+                          rx="16"
+                          fill="var(--brand-primary)" />
+                        <rect x="28" y="28" width="8" height="40" rx="4" fill="var(--on-solid)" />
+                        <rect x="44" y="22" width="8" height="46" rx="4" fill="var(--on-solid)" />
+                        <rect x="60" y="32" width="8" height="36" rx="4" fill="var(--on-solid)" />
+                      </svg>
+                      <span class="text-faint">32</span>
+                    </div>
+
+                    <div class="stack">
+                      <svg
+                        width="64"
+                        height="64"
+                        viewBox="0 0 96 96"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true">
+                        <rect
+                          x="8"
+                          y="8"
+                          width="80"
+                          height="80"
+                          rx="16"
+                          fill="var(--brand-primary)" />
+                        <rect x="28" y="28" width="8" height="40" rx="4" fill="var(--on-solid)" />
+                        <rect x="44" y="22" width="8" height="46" rx="4" fill="var(--on-solid)" />
+                        <rect x="60" y="32" width="8" height="36" rx="4" fill="var(--on-solid)" />
+                      </svg>
+                      <span class="text-faint">64</span>
+                    </div>
+
+                    <div class="stack">
+                      <svg
+                        width="128"
+                        height="128"
+                        viewBox="0 0 96 96"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true">
+                        <rect
+                          x="8"
+                          y="8"
+                          width="80"
+                          height="80"
+                          rx="16"
+                          fill="var(--brand-primary)" />
+                        <rect x="28" y="28" width="8" height="40" rx="4" fill="var(--on-solid)" />
+                        <rect x="44" y="22" width="8" height="46" rx="4" fill="var(--on-solid)" />
+                        <rect x="60" y="32" width="8" height="36" rx="4" fill="var(--on-solid)" />
+                      </svg>
+                      <span class="text-faint">128</span>
+                    </div>
+                  </div>
+
+                  <p class="help">Same SVG reused at multiple sizes to validate recognizability.</p>
+                </div>
+              </div>
+            </section>
+
+            <!-- TYPOGRAPHY -->
+            <section id="typography" aria-labelledby="typography-title" class="stack">
+              <h2 id="typography-title">Typography</h2>
+
+              <div class="grid">
+                <div class="col-8">
+                  <div class="surface-raised stack pad-x-md pad-y-md">
+                    <h3>Hierarchy & readability</h3>
+
+                    <p class="text-muted">
+                      Typography should be readable, calm, and consistent. Headings establish
+                      structure without decorative noise.
+                    </p>
+
+                    <p>
+                      Link styling example:
+                      <a href="#components">go to components</a>. Inline code example:
+                      <code class="numeric">ULID_01J…</code>.
+                    </p>
+
+                    <p class="text-faint">
+                      Small/muted text supports scanning and long sessions without fatigue.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="col-4">
+                  <div class="surface stack pad-x-md pad-y-md">
+                    <h3>Preformatted</h3>
+
+                    <pre aria-label="Example code block"><code>// deterministic projection
+const snapshot = projectMonth(events, "2026-01");
+render(snapshot);</code></pre>
+
+                    <p class="help">Code blocks should be legible but not visually dominant.</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- LAYOUT -->
+            <section id="layout" aria-labelledby="layout-title" class="stack">
+              <h2 id="layout-title">Layout</h2>
+
+              <div class="grid">
+                <div class="col-8">
+                  <div class="surface-raised stack pad-x-md pad-y-md">
+                    <h3>Responsive grid</h3>
+
+                    <p class="text-muted">
+                      Uses
+                      <code>layout.css</code> primitives: 4 columns (mobile), 8 (tablet), 12
+                      (desktop). Resize the window to validate behavior.
+                    </p>
+
+                    <div class="grid" aria-label="Grid example">
+                      <div class="col-4 surface pad-x-sm pad-y-sm">
+                        <p class="text-faint">col-4</p>
+                        <p class="text-muted">Budgets</p>
+                      </div>
+                      <div class="col-4 surface pad-x-sm pad-y-sm">
+                        <p class="text-faint">col-4</p>
+                        <p class="text-muted">Transactions</p>
+                      </div>
+                      <div class="col-4 surface pad-x-sm pad-y-sm">
+                        <p class="text-faint">col-4</p>
+                        <p class="text-muted">Reports</p>
+                      </div>
+                      <div class="col-12 surface pad-x-sm pad-y-sm">
+                        <p class="text-faint">col-12</p>
+                        <p class="text-muted">Full-width content block</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-4">
+                  <div class="surface stack pad-x-md pad-y-md">
+                    <h3>Surfaces</h3>
+
+                    <p class="text-muted">
+                      Surfaces come from
+                      <code>branding.css</code> helpers: <code>.surface</code> and
+                      <code>.surface-raised</code>.
+                    </p>
+
+                    <div class="surface pad-x-sm pad-y-sm">
+                      <p class="text-faint">.surface</p>
+                      <p class="text-muted">Default grouping</p>
+                    </div>
+
+                    <div class="surface-raised pad-x-sm pad-y-sm">
+                      <p class="text-faint">.surface-raised</p>
+                      <p class="text-muted">Raised grouping</p>
+                    </div>
+
+                    <p class="help">Dark mode relies on subtle elevation separation.</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- COMPONENTS -->
+            <section id="components" aria-labelledby="components-title" class="stack">
+              <h2 id="components-title">Components</h2>
+
+              <div class="grid">
+                <div class="col-6">
+                  <div class="surface-raised stack pad-x-md pad-y-md">
+                    <h3>Buttons</h3>
+
+                    <p class="text-muted">
+                      Primary / secondary / ghost with clear focus-visible behavior and accessible
+                      hit targets.
+                    </p>
+
+                    <div class="cluster" role="group" aria-label="Button examples">
+                      <button class="btn btn--primary">Primary</button>
+                      <button class="btn btn--secondary">Secondary</button>
+                      <button class="btn btn--ghost">Ghost</button>
+                      <button class="btn" disabled>Disabled</button>
+                    </div>
+
+                    <div
+                      class="callout"
+                      data-tone="info"
+                      role="note"
+                      aria-label="Button interaction note">
+                      <svg class="callout__icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                          d="M12 22a10 10 0 1 0-10-10 10 10 0 0 0 10 10Z"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"></path>
+                        <path
+                          d="M12 16v-5"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"></path>
+                        <path
+                          d="M12 8h.01"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="3"
+                          stroke-linecap="round"></path>
+                      </svg>
+                      <div>
+                        <h3 class="callout__title">Interaction</h3>
+                        <p class="callout__body">
+                          Hover is a mild luminance shift. Reduced-motion disables transitions.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-6">
+                  <div class="surface stack pad-x-md pad-y-md">
+                    <h3>Forms</h3>
+
+                    <form class="stack" action="#" method="get">
+                      <div class="field">
+                        <label class="field__label" for="payee">Payee</label>
+                        <input
+                          id="payee"
+                          name="payee"
+                          class="control"
+                          type="text"
+                          placeholder="e.g., Supermarket"
+                          autocomplete="off" />
+                        <div class="hint">Use clear, searchable names.</div>
+                      </div>
+
+                      <div class="grid">
+                        <div class="col-6 field">
+                          <label class="field__label" for="amount">Amount</label>
+                          <input
+                            id="amount"
+                            name="amount"
+                            class="control numeric"
+                            type="number"
+                            inputmode="decimal"
+                            step="0.01"
+                            placeholder="0.00"
+                            data-state="warning"
+                            aria-describedby="amountHelp" />
+                          <div id="amountHelp" class="hint">Tabular numerals for alignment.</div>
+                        </div>
+
+                        <div class="col-6 field">
+                          <label class="field__label" for="date">Date</label>
+                          <input
+                            id="date"
+                            name="date"
+                            class="control"
+                            type="date"
+                            data-state="success" />
+                          <div class="hint">Local dates; no timezone surprises.</div>
+                        </div>
+
+                        <div class="col-12 field">
+                          <label class="field__label" for="category">Category</label>
+                          <select id="category" name="category" class="control">
+                            <option>Groceries</option>
+                            <option>Rent</option>
+                            <option>Transport</option>
+                            <option>Fun Money</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div class="field">
+                        <label class="field__label" for="note">Note</label>
+                        <textarea
+                          id="note"
+                          name="note"
+                          class="control"
+                          rows="3"
+                          placeholder="Optional details for future-you."></textarea>
+                      </div>
+
+                      <fieldset class="fieldset">
+                        <legend class="fieldset__legend">Type</legend>
+                        <div class="cluster">
+                          <label class="choice">
+                            <input type="radio" name="type" value="expense" checked />
+                            <span>Expense</span>
+                          </label>
+                          <label class="choice">
+                            <input type="radio" name="type" value="income" />
+                            <span>Income</span>
+                          </label>
+                          <label class="choice">
+                            <input type="checkbox" name="cleared" value="yes" />
+                            <span>Cleared</span>
+                          </label>
+                        </div>
+                      </fieldset>
+
+                      <div class="error" role="alert">
+                        Example error: Amount exceeds available. Move funds or pick another
+                        category.
+                      </div>
+
+                      <div class="cluster">
+                        <button type="button" class="btn btn--primary">Save</button>
+                        <button type="button" class="btn btn--secondary">Save & add another</button>
+                        <button type="button" class="btn btn--ghost">Cancel</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+
+              <div class="surface-raised stack pad-x-md pad-y-md">
+                <h3>Feedback patterns (not color-only)</h3>
+
+                <p class="text-muted">
+                  Each block uses icon + title + explanation. Color assists but does not carry
+                  meaning alone.
+                </p>
+
+                <div class="grid">
+                  <div
+                    class="col-6 callout"
+                    data-tone="success"
+                    role="note"
+                    aria-label="Success callout">
+                    <svg class="callout__icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M20 6L9 17l-5-5"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"></path>
+                    </svg>
+                    <div>
+                      <h3 class="callout__title">Saved</h3>
+                      <p class="callout__body">Transaction recorded and balances updated.</p>
+                    </div>
+                  </div>
+
+                  <div class="col-6 callout" data-tone="info" role="note" aria-label="Info callout">
+                    <svg class="callout__icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M12 22a10 10 0 1 0-10-10 10 10 0 0 0 10 10Z"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"></path>
+                      <path
+                        d="M12 16v-5"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"></path>
+                      <path
+                        d="M12 8h.01"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="3"
+                        stroke-linecap="round"></path>
+                    </svg>
+                    <div>
+                      <h3 class="callout__title">Info</h3>
+                      <p class="callout__body">Planning and reality are separate concepts.</p>
+                    </div>
+                  </div>
+
+                  <div
+                    class="col-6 callout"
+                    data-tone="warning"
+                    role="note"
+                    aria-label="Warning callout">
+                    <svg class="callout__icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M12 9v4"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"></path>
+                      <path
+                        d="M12 17h.01"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="3"
+                        stroke-linecap="round"></path>
+                      <path
+                        d="M10.3 4.2 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linejoin="round"></path>
+                    </svg>
+                    <div>
+                      <h3 class="callout__title">Needs attention</h3>
+                      <p class="callout__body">One envelope is below your target amount.</p>
+                    </div>
+                  </div>
+
+                  <div
+                    class="col-6 callout"
+                    data-tone="danger"
+                    role="note"
+                    aria-label="Danger callout">
+                    <svg class="callout__icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Z"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"></path>
+                      <path
+                        d="M15 9 9 15"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"></path>
+                      <path
+                        d="M9 9l6 6"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"></path>
+                    </svg>
+                    <div>
+                      <h3 class="callout__title">Overspent</h3>
+                      <p class="callout__body">Resolve negative envelopes before month rollover.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  class="validation"
+                  data-tone="warning"
+                  role="alert"
+                  aria-label="Validation example">
+                  <svg class="validation__icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                      d="M12 9v4"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"></path>
+                    <path
+                      d="M12 17h.01"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"></path>
+                    <path
+                      d="M10.3 4.2 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linejoin="round"></path>
+                  </svg>
+                  <div>
+                    <span class="validation__title">Check this</span>
+                    <p class="validation__text">
+                      Amount exceeds “Groceries” available. Move funds or adjust.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- DATA -->
+            <section id="data" aria-labelledby="data-title" class="stack">
+              <h2 id="data-title">Data</h2>
+
+              <div class="grid">
+                <div class="col-8">
+                  <div class="surface-raised stack pad-x-md pad-y-md">
+                    <div class="split">
+                      <h3>Transactions</h3>
+                      <span class="chip">January 2026</span>
+                    </div>
+
+                    <div class="table" role="region" aria-label="Transactions table">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th scope="col">Date</th>
+                            <th scope="col">Payee</th>
+                            <th scope="col">Category</th>
+                            <th scope="col">Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>2026-01-03</td>
+                            <td>Employer</td>
+                            <td>Income</td>
+                            <td class="td-num numeric">+2,850.00</td>
+                          </tr>
+                          <tr>
+                            <td>2026-01-05</td>
+                            <td>Rent</td>
+                            <td>Housing</td>
+                            <td class="td-num numeric">-1,200.00</td>
+                          </tr>
+                          <tr>
+                            <td>2026-01-07</td>
+                            <td>Supermarket</td>
+                            <td>Groceries</td>
+                            <td class="td-num numeric">-74.32</td>
+                          </tr>
+                          <tr>
+                            <td>2026-01-09</td>
+                            <td>Transit</td>
+                            <td>Transport</td>
+                            <td class="td-num numeric">-49.00</td>
+                          </tr>
+                          <tr>
+                            <td>2026-01-12</td>
+                            <td>Cinema</td>
+                            <td>Fun Money</td>
+                            <td class="td-num numeric">-18.50</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <p class="help">
+                      Sign + alignment conveys meaning; color is not required here.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="col-4">
+                  <div class="surface stack pad-x-md pad-y-md">
+                    <div class="split">
+                      <h3>Envelopes</h3>
+                      <span class="chip" data-tone="info">Available</span>
+                    </div>
+
+                    <div class="list" aria-label="Category list">
+                      <div class="list-item">
+                        <div>
+                          <div>Groceries</div>
+                          <div class="text-faint">Monthly</div>
+                        </div>
+                        <div class="numeric" aria-label="Available amount">€ 125.68</div>
+                      </div>
+
+                      <div class="list-item">
+                        <div>
+                          <div>Transport</div>
+                          <div class="text-faint">Monthly</div>
+                        </div>
+                        <div class="numeric">€ 31.50</div>
+                      </div>
+
+                      <div class="list-item">
+                        <div>
+                          <div>Fun Money</div>
+                          <div class="text-faint">Low</div>
+                        </div>
+                        <div class="numeric" aria-label="Available amount low">€ 8.20</div>
+                      </div>
+
+                      <div class="list-item">
+                        <div>
+                          <div>Gifts</div>
+                          <div class="text-faint">Overspent</div>
+                        </div>
+                        <div class="numeric" aria-label="Overspent amount">€ -12.00</div>
+                      </div>
+                    </div>
+
+                    <p class="help">
+                      In production: “low/overspent” should include an icon + explicit label in-row.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- ACCESSIBILITY -->
+            <section id="a11y" aria-labelledby="a11y-title" class="stack">
+              <h2 id="a11y-title">Accessibility</h2>
+
+              <div class="grid">
+                <div class="col-6 surface stack pad-x-md pad-y-md">
+                  <h3>Keyboard focus</h3>
+
+                  <p class="text-muted">
+                    Tab through controls. Focus-visible rings should be obvious and calm.
+                  </p>
+
+                  <div class="cluster" role="group" aria-label="Focus demo controls">
+                    <button class="btn btn--primary">Focusable</button>
+                    <button class="btn btn--secondary">Secondary</button>
+                    <a class="btn btn--ghost" href="#typography">Link</a>
+                  </div>
+
+                  <div class="field">
+                    <label class="field__label" for="focusInput">Focusable input</label>
+                    <input id="focusInput" class="control" type="text" placeholder="Tab into me" />
+                  </div>
+
+                  <p class="help">Try the skip link: press Tab at page start to reveal it.</p>
+                </div>
+
+                <div class="col-6 surface-raised stack pad-x-md pad-y-md">
+                  <h3>Reduced motion</h3>
+
+                  <p class="text-muted">
+                    Components respect
+                    <code>prefers-reduced-motion</code> by disabling transitions.
+                  </p>
+
+                  <div
+                    class="validation"
+                    data-tone="info"
+                    role="note"
+                    aria-label="Reduced motion note">
+                    <svg class="validation__icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M12 22a10 10 0 1 0-10-10 10 10 0 0 0 10 10Z"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"></path>
+                      <path
+                        d="M12 16v-5"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"></path>
+                      <path
+                        d="M12 8h.01"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="3"
+                        stroke-linecap="round"></path>
+                    </svg>
+                    <div>
+                      <span class="validation__title">Motion is optional</span>
+                      <p class="validation__text">
+                        Transitions are subtle and disabled when reduced-motion is enabled.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- PRINT -->
+            <section id="print" aria-labelledby="print-title" class="stack">
+              <h2 id="print-title">Print</h2>
+
+              <div class="surface-raised stack pad-x-md pad-y-md">
+                <p class="text-muted">
+                  Print this page (or “Print to PDF”) and verify: header/sidebar are hidden, text
+                  remains high-contrast, and backgrounds don’t flood the page.
+                </p>
+
+                <div class="table" role="region" aria-label="Print check table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th scope="col">Check</th>
+                        <th scope="col">Expected</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Backgrounds</td>
+                        <td>Minimal / transparent in print</td>
+                      </tr>
+                      <tr>
+                        <td>Text</td>
+                        <td>Black on white, readable</td>
+                      </tr>
+                      <tr>
+                        <td>Layout</td>
+                        <td>Main content only, sane spacing</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="callout" data-tone="info" role="note" aria-label="Print note">
+                  <svg class="callout__icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                      d="M12 22a10 10 0 1 0-10-10 10 10 0 0 0 10 10Z"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"></path>
+                    <path
+                      d="M12 16v-5"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"></path>
+                    <path
+                      d="M12 8h.01"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"></path>
+                  </svg>
+                  <div>
+                    <h3 class="callout__title">Note</h3>
+                    <p class="callout__body">
+                      Browsers differ — “good enough” print output is the goal. Avoid dark fills
+                      that invert.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <footer class="surface pad-x-md pad-y-md stack" role="contentinfo">
+              <div class="split">
+                <div class="stack">
+                  <p><strong>YASBA — Styleguide</strong></p>
+                  <p class="text-faint">Offline-first • deterministic • accessible • calm</p>
+                </div>
+                <span class="chip">v0.3</span>
+              </div>
+
+              <p class="text-muted">
+                This page is intended as a visual reference and regression check for the design
+                system files.
+              </p>
+            </footer>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const STORAGE_KEY = "yasba.theme";
+        const html = document.documentElement;
+        const select = document.getElementById("themeSelect");
+        const cycle = document.getElementById("cycleTheme");
+
+        function applyTheme(value) {
+          if (value === "light" || value === "dark") html.setAttribute("data-theme", value);
+          else html.removeAttribute("data-theme"); // system default
+        }
+
+        function getStoredTheme() {
+          try {
+            return localStorage.getItem(STORAGE_KEY);
+          } catch (_) {
+            return null;
+          }
+        }
+
+        function setStoredTheme(value) {
+          try {
+            if (value) localStorage.setItem(STORAGE_KEY, value);
+            else localStorage.removeItem(STORAGE_KEY);
+          } catch (_) {}
+        }
+
+        function init() {
+          const stored = getStoredTheme();
+          const initial = stored || "system";
+          if (select) select.value = initial;
+          applyTheme(initial);
+        }
+
+        if (select) {
+          select.addEventListener("change", function () {
+            const value = select.value;
+            setStoredTheme(value === "system" ? "" : value);
+            applyTheme(value);
+          });
+        }
+
+        if (cycle) {
+          cycle.addEventListener("click", function () {
+            const current = (select && select.value) || "system";
+            const next = current === "system" ? "light" : current === "light" ? "dark" : "system";
+            if (select) select.value = next;
+            setStoredTheme(next === "system" ? "" : next);
+            applyTheme(next);
+          });
+        }
+
+        init();
+      })();
+    </script>
+  </body>
+</html>

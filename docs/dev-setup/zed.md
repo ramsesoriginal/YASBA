@@ -1,0 +1,3 @@
+- Install Zed
+- Install EditorConfig extension (optional but recommended)
+- Ensure prettier and ruff are available via repo scripts (or via pnpm -C frontend prettier … and uv run ruff …)

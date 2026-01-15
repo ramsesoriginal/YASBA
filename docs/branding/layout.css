@@ -1,0 +1,323 @@
+/* YASBA - layout.css - v0.1 */
+
+/* Layout system + grid baseline.
+   Keep it small: containers, grids, app shell, and calm table/list primitives. */
+
+/* ---------- Container ---------- */
+
+:root {
+  --container-max: 72rem; /* ~1152px, calm editorial line length */
+  --container-pad: clamp(1rem, 2vw, 1.5rem);
+  --gutter: var(--space-4);
+  --gap: var(--space-4);
+
+  /* Density knobs (can be toggled by a class on html/body later) */
+  --density-compact: 0.85;
+  --density-comfort: 1.1;
+}
+
+/* Optional density modes */
+html[data-density="compact"] {
+  --gap: calc(var(--space-4) * var(--density-compact));
+  --gutter: calc(var(--space-4) * var(--density-compact));
+  --container-pad: clamp(0.875rem, 1.5vw, 1.25rem);
+}
+
+html[data-density="comfort"] {
+  --gap: calc(var(--space-4) * var(--density-comfort));
+  --gutter: calc(var(--space-4) * var(--density-comfort));
+  --container-pad: clamp(1.25rem, 2.5vw, 2rem);
+}
+
+.container {
+  width: 100%;
+  max-width: var(--container-max);
+  margin-inline: auto;
+  padding-inline: var(--container-pad);
+}
+
+/* Section rhythm (layout primitive) */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.cluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap);
+}
+
+/* ---------- Responsive Grid (12-col desktop, 8-col tablet, 4-col mobile) ---------- */
+
+.grid {
+  display: grid;
+  gap: var(--gap);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (min-width: 40rem) {
+  .grid {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 64rem) {
+  .grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+}
+
+/* Column spans (layout-only utilities; keep small set) */
+.col-1 {
+  grid-column: span 1;
+}
+.col-2 {
+  grid-column: span 2;
+}
+.col-3 {
+  grid-column: span 3;
+}
+.col-4 {
+  grid-column: span 4;
+}
+.col-6 {
+  grid-column: span 6;
+}
+.col-8 {
+  grid-column: span 8;
+}
+.col-12 {
+  grid-column: span 12;
+}
+
+/* Ensure full-span on small screens without extra markup */
+@media (max-width: 39.999rem) {
+  .col-6,
+  .col-8,
+  .col-12 {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ---------- App Shell (header + main + optional sidebar) ---------- */
+
+/* Recommended structure:
+   <div class="app-shell">
+     <header class="app-header">...</header>
+     <div class="app-body">
+       <aside class="app-sidebar">...</aside>
+       <main class="app-main">...</main>
+     </div>
+   </div>
+*/
+
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  background: var(--color-bg);
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+  background: color-mix(in oklab, var(--color-bg), var(--color-surface) 55%);
+  border-bottom: 1px solid var(--color-border);
+  backdrop-filter: saturate(1);
+}
+
+.app-header .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: var(--space-3);
+  gap: var(--space-4);
+}
+
+.app-body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+
+.app-sidebar {
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.app-main {
+  padding-block: var(--space-6);
+}
+
+@media (min-width: 64rem) {
+  .app-body {
+    grid-template-columns: 18rem 1fr;
+  }
+
+  .app-sidebar {
+    position: sticky;
+    top: 3.5rem; /* approximate header height; adjust as needed */
+    align-self: start;
+    height: calc(100vh - 3.5rem);
+    overflow: auto;
+  }
+
+  .app-main {
+    min-width: 0;
+  }
+}
+
+/* Container queries: if sidebar collapses inside a narrow container */
+@container (max-width: 48rem) {
+  .app-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Layout primitives (limited utilities) ---------- */
+
+.pad-y-sm {
+  padding-block: var(--space-3);
+}
+.pad-y-md {
+  padding-block: var(--space-6);
+}
+.pad-x-sm {
+  padding-inline: var(--space-3);
+}
+.pad-x-md {
+  padding-inline: var(--space-6);
+}
+
+.gap-sm {
+  gap: var(--space-3);
+}
+.gap-md {
+  gap: var(--space-4);
+}
+.gap-lg {
+  gap: var(--space-6);
+}
+
+.split {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+}
+
+/* ---------- Budgeting-friendly tables (structure, not heavy brand styling) ---------- */
+
+.table {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: clip;
+  background: var(--color-surface);
+}
+
+.table table {
+  width: 100%;
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: color-mix(in oklab, var(--color-surface), var(--color-bg) 40%);
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
+.table tbody td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* Calm zebra — extremely subtle and mode-safe */
+.table tbody tr:nth-child(2n) td {
+  background: color-mix(in oklab, var(--color-surface), var(--color-bg) 65%);
+}
+
+/* Numeric alignment helper */
+.td-num {
+  text-align: right;
+  font-variant-numeric: var(--numeric);
+}
+
+/* ---------- Lists: navigation & dense lists ---------- */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.list-item[aria-current="page"] {
+  border-color: color-mix(in oklab, var(--brand-primary), transparent 55%);
+  background: color-mix(in oklab, var(--color-surface), var(--brand-primary) 6%);
+}
+
+/* ---------- Responsive content columns for reports ---------- */
+
+.prose {
+  max-width: 70ch;
+}
+
+.columns {
+  display: grid;
+  gap: var(--gap);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 64rem) {
+  .columns {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
+/* ---------- Print friendliness ---------- */
+
+@media print {
+  .app-header,
+  .app-sidebar {
+    display: none !important;
+  }
+
+  .app-main {
+    padding: 0 !important;
+  }
+
+  .table {
+    border-color: #000 !important;
+  }
+
+  .table thead th,
+  .table tbody td {
+    background: transparent !important;
+    color: #000 !important;
+  }
+}
