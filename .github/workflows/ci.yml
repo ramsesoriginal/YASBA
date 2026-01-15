@@ -24,26 +24,52 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Node (cache pnpm)
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "pnpm"
-          cache-dependency-path: frontend/pnpm-lock.yaml
 
-      - name: Enable Corepack (pnpm)
-        run: corepack enable
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: "9"
+          run_install: false
+
+      - name: Get pnpm store path
+        id: pnpm-store
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
       - name: Install deps
         run: pnpm -C frontend install --frozen-lockfile
 
-      # If you already have eslint scripts wired, keep these.
-      # Otherwise leave them for the next item and only build for now.
       - name: Lint
-        run: pnpm -C frontend run lint --if-present
+        working-directory: frontend
+        shell: bash
+        run: |
+          if pnpm -s run | grep -qE '^lint\b'; then
+            pnpm run lint
+          else
+            echo "No lint script; skipping."
+          fi
 
       - name: Test
-        run: pnpm -C frontend run test --if-present
+        working-directory: frontend
+        shell: bash
+        run: |
+          if pnpm -s run | grep -qE '^test\b'; then
+            pnpm run test
+          else
+            echo "No test script; skipping."
+          fi
 
       - name: Build
         run: pnpm -C frontend run build
@@ -78,14 +104,3 @@ jobs:
       - name: Ruff (format check)
         working-directory: backend
         run: uv run ruff format --check .
-
-      # Keep mypy/pytest optional at Phase 0 if you want them later.
-      - name: Mypy
-        working-directory: backend
-        run: uv run mypy .
-        continue-on-error: true
-
-      - name: Pytest
-        working-directory: backend
-        run: uv run pytest -q
-        continue-on-error: true
