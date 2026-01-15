@@ -1,0 +1,53 @@
+# Default: text files use LF
+* text=auto eol=lf
+
+# Explicit text files
+*.md            text
+*.txt           text
+*.json          text
+*.yml           text
+*.yaml          text
+*.toml          text
+*.ini           text
+*.editorconfig  text
+*.gitignore     text
+*.gitattributes text
+
+# Source code
+*.ts            text
+*.tsx           text
+*.js            text
+*.jsx           text
+*.css           text
+*.html          text
+*.py            text
+*.sh            text
+*.ps1           text
+
+# Docker / infra
+Dockerfile      text
+*.dockerfile    text
+
+# Binary files (never diff, never modify)
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.gif           binary
+*.ico           binary
+*.svg           binary
+*.webp          binary
+*.pdf           binary
+*.zip           binary
+*.tar           binary
+*.gz            binary
+*.7z            binary
+*.woff          binary
+*.woff2         binary
+
+# Lockfiles (text, but sensitive)
+pnpm-lock.yaml  text
+uv.lock         text
+poetry.lock     text
+
+# Prevent accidental CRLF in shell scripts
+*.sh            eol=lf
