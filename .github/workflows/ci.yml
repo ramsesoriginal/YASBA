@@ -52,24 +52,12 @@ jobs:
         run: pnpm -C frontend install --frozen-lockfile
 
       - name: Lint
-        working-directory: frontend
         shell: bash
-        run: |
-          if pnpm -s run | grep -qE '^lint\b'; then
-            pnpm run lint
-          else
-            echo "No lint script; skipping."
-          fi
+        run: pnpm -C frontend lint
 
       - name: Test
-        working-directory: frontend
         shell: bash
-        run: |
-          if pnpm -s run | grep -qE '^test\b'; then
-            pnpm run test
-          else
-            echo "No test script; skipping."
-          fi
+        run: pnpm -C frontend test
 
       - name: Build
         run: pnpm -C frontend run build
