@@ -198,8 +198,8 @@ adrs/
 ├── 0002-deterministic-domain-model.md
 └── 0003-indexeddb-schema-and-record-storage.md
 docs/
-├── architecture/
-└── └── domain-engine.md
+└── architecture/
+    └── domain-engine.md
 ```
 
 This keeps architectural intent explicit and reviewable.
