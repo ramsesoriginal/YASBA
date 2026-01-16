@@ -60,10 +60,40 @@ This repository is intentionally structured as a **portfolio-grade monorepo**, s
 
 | Phase | Description |
 |------:|-------------|
-| **Phase 0** | Repo setup, tooling, branding, CI foundations *(current)* |
-| Phase 1 | Offline-only MVP (IndexedDB, envelope budgeting) |
+| **Phase 0** | Repo setup, tooling, branding, CI foundations (done) |
+| **Phase 1** | Offline-only MVP (IndexedDB, envelope budgeting) *(current)* |
 | Phase 2 | Optional backend sync (FastAPI + PostgreSQL) |
 | Phase 3 | Multi-user sharing & collaboration |
+
+**Phase 1 (offline-only MVP) is in progress.**
+Phase 0 (repo scaffolding, CI, tooling, docs baseline) is complete and tagged as `v0.1.0`.
+
+### Phase 1 roadmap (vertical slices)
+
+Slice 1 — Minimal usable month (categories + income/expense + deterministic balances + IndexedDB)
+Slice 2 — Budget assignment + rollover + plan future months
+Slice 3 — Transaction workflow polish (append-only edits/corrections)
+Slice 4 — Category management (subcategories, rename, archive, ordering)
+Slice 5 — Reports (spending per category/month)
+Slice 6 — Import/Export JSON
+Slice 7 — MVP hardening (a11y, UX polish, docs, release v0.2.0)
+
+### What works right now (Slice 1)
+
+- Offline-only persistence via **IndexedDB**
+- Deterministic month projection from **immutable records**
+- Minimal Month screen:
+  - create categories
+  - add income (uncategorized inflow → “Ready to Assign”)
+  - add expenses (categorized outflows)
+  - see per-category **Activity** and **Available**
+  - refresh the page and data persists
+
+### What is explicitly out of scope (Phase 1)
+
+- accounts, auth, sync, backend
+- multi-user/sharing
+- recurring transactions, debt, goals (scheduled later if ever)
 
 ---
 
@@ -110,10 +140,20 @@ cd YASBA
 mise install
 ```
 
-Frontend:
+Build Frontend:
 ```bash
 pnpm -C frontend install
 pnpm -C frontend build
+```
+
+Run frontend:
+```bash
+pnpm -C frontend dev
+```
+
+Test frontend:
+```bash
+pnpm -C frontend test
 ```
 
 Backend tooling check:
@@ -156,10 +196,21 @@ All non-trivial technical decisions are documented as **ADRs**:
 adrs/
 ├── 0001-offline-first.md
 ├── 0002-deterministic-domain-model.md
-└── ...
+└── 0003-indexeddb-schema-and-record-storage.md
+docs/
+├── architecture/
+└── └── domain-engine.md
 ```
 
 This keeps architectural intent explicit and reviewable.
+
+YASBA follows two binding principles:
+
+- **Offline-first**: local data is the source of truth.
+- **Deterministic domain model**: the same inputs produce the same outputs; domain logic is pure and testable.
+
+Persistence stores an append-only log of domain records in IndexedDB. UI renders month views by projecting those records into a `MonthSnapshot`.
+
 
 ---
 
