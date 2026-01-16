@@ -1,0 +1,28 @@
+# infra/compose.yml
+name: yasba
+
+services:
+  frontend:
+    build:
+      context: ..
+      dockerfile: infra/frontend/Dockerfile.dev
+    working_dir: /app
+    ports:
+      - "5173:5173"
+    environment:
+      # Some file-watching setups need polling inside containers
+      # especially on Windows/macOS file sharing.
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    volumes:
+      # Mount source
+      - ../frontend:/app:cached
+      # Avoid host node_modules fights: keep them in a named volume
+      - frontend_node_modules:/app/node_modules
+      # Speed up installs by caching pnpm store
+      - pnpm_store:/pnpm/store
+    command: sh -lc "corepack enable && pnpm install && pnpm dev --host 0.0.0.0 --port 5173"
+
+volumes:
+  frontend_node_modules:
+  pnpm_store:
