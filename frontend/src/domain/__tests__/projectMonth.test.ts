@@ -39,7 +39,7 @@ describe("projectMonth", () => {
     expect(groceries?.availableCents).toBe(-25_50);
   });
 
-  it("ignores transactions outside the requested month", () => {
+  it("rolls over previous month available into the requested month (activity remains month-local)", () => {
     const records: DomainRecord[] = [
       {
         type: "CategoryCreated",
@@ -60,8 +60,12 @@ describe("projectMonth", () => {
 
     const snap = projectMonth(records, "2026-01");
     const groceries = snap.categories.find((c) => c.categoryId === "cat-groceries");
+
+    // Month-local activity ignores December tx
     expect(groceries?.activityCents).toBe(0);
-    expect(groceries?.availableCents).toBe(0);
+
+    // But available rolls over previous month available (December = -10.00)
+    expect(groceries?.availableCents).toBe(-10_00);
   });
 
   it("is deterministic under timestamp collisions using id as final tie-breaker", () => {
