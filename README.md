@@ -212,8 +212,7 @@ All non-trivial technical decisions are documented as **ADRs**:
 adrs/
 ├── 0001-offline-first.md
 ├── 0002-deterministic-domain-model.md
-├── 0003-indexeddb-schema-and-record-storage.md
-└── 0004-record-ids-and-ordering-strategy.md
+├── ...
 docs/
 └── architecture/
     └── domain-engine.md
