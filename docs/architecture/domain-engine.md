@@ -9,6 +9,7 @@ YASBA Phase 1 is **offline-first** and **deterministic**:
 The app stores immutable `DomainRecord` items such as:
 - `CategoryCreated`
 - `TransactionCreated`
+- `BudgetAssigned` (monthKey, categoryId, amountCents)
 
 To render a month, the UI:
 1) loads all records from IndexedDB
@@ -29,8 +30,22 @@ For projection we use an explicit, stable ordering:
 
 This prevents nondeterminism when timestamps collide.
 
+## Envelope math (current)
+
+For each month + category:
+
+- `budgetedCents` = sum(BudgetAssigned.amountCents for monthKey+categoryId)
+- `activityCents` = sum(TransactionCreated.amountCents for monthKey+categoryId)
+- `rolloverCents` = previous month `availableCents` for that category
+- `availableCents` = rolloverCents + budgetedCents + activityCents
+
+For the month:
+
+- `readyToAssignCents` = sum(uncategorized inflow transactions in month) − sum(all BudgetAssigned in month)
+
 ## References
 
 - ADR-0001 Offline-first
 - ADR-0002 Deterministic domain model
 - ADR-0003 IndexedDB schema and record storage
+- ADR-0004 Record IDs and ordering strategy.md

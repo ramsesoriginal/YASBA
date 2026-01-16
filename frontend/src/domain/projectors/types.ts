@@ -4,13 +4,16 @@ export type CategorySnapshot = {
   categoryId: CategoryId;
   name: string;
 
+  rolloverCents: MoneyCents; // carried from previous month available
+  budgetedCents: MoneyCents; // sum of BudgetAssigned for this month
   activityCents: MoneyCents; // sum of tx amounts for this month (usually negative)
-  availableCents: MoneyCents; // running balance (Slice 1: starts at 0)
+  availableCents: MoneyCents; // rollover + budgeted + activity
 };
 
 export type MonthSnapshot = {
   monthKey: MonthKey;
 
+  // ReadyToAssign = uncategorized inflows - sum(budget assignments in month)
   readyToAssignCents: MoneyCents;
 
   categories: CategorySnapshot[];

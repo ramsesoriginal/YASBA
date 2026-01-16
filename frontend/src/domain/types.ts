@@ -9,7 +9,7 @@ export type MonthKey = string;
 
 export type MoneyCents = number;
 
-export type DomainRecord = CategoryCreated | TransactionCreated;
+export type DomainRecord = CategoryCreated | TransactionCreated | BudgetAssigned;
 
 export type CategoryCreated = {
   type: "CategoryCreated";
@@ -38,4 +38,16 @@ export type TransactionCreated = {
 
   payee?: string;
   memo?: string;
+};
+
+export type BudgetAssigned = {
+  type: "BudgetAssigned";
+  id: RecordId;
+  createdAt: IsoDateTime;
+
+  monthKey: MonthKey;
+  categoryId: CategoryId;
+
+  // positive to assign, negative to unassign
+  amountCents: MoneyCents;
 };

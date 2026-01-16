@@ -70,23 +70,25 @@ Phase 0 (repo scaffolding, CI, tooling, docs baseline) is complete and tagged as
 
 ### Phase 1 roadmap (vertical slices)
 
-Slice 1 — Minimal usable month (categories + income/expense + deterministic balances + IndexedDB)
-Slice 2 — Budget assignment + rollover + plan future months
-Slice 3 — Transaction workflow polish (append-only edits/corrections)
-Slice 4 — Category management (subcategories, rename, archive, ordering)
-Slice 5 — Reports (spending per category/month)
-Slice 6 — Import/Export JSON
-Slice 7 — MVP hardening (a11y, UX polish, docs, release v0.2.0)
+- ✅ Slice 1 — Minimal usable month (categories + income/expense + deterministic balances + IndexedDB)
+- ✅ Slice 2 — Budget assignment + rollover + plan future months
+- ⏭️ Slice 3 — Transaction workflow polish (append-only edits/corrections)
+- Slice 4 — Category management (subcategories, rename, archive, ordering)
+- Slice 5 — Reports (spending per category/month)
+- Slice 6 — Import/Export JSON
+- Slice 7 — MVP hardening (a11y, UX polish, docs, release v0.2.0)
 
-### What works right now (Slice 1)
+### What works right now (Slice 2)
 
-- Offline-only persistence via **IndexedDB**
-- Deterministic month projection from **immutable records**
+- Offline-only persistence via **IndexedDB** (append-only records)
+- Deterministic month projection from immutable records
 - Minimal Month screen:
   - create categories
   - add income (uncategorized inflow → “Ready to Assign”)
   - add expenses (categorized outflows)
-  - see per-category **Activity** and **Available**
+  - **assign budget to categories per month** (Budgeted)
+  - **rollover**: previous month Available carries into the next month
+  - plan future months via the month selector
   - refresh the page and data persists
 
 ### What is explicitly out of scope (Phase 1)
@@ -94,6 +96,20 @@ Slice 7 — MVP hardening (a11y, UX polish, docs, release v0.2.0)
 - accounts, auth, sync, backend
 - multi-user/sharing
 - recurring transactions, debt, goals (scheduled later if ever)
+
+### Budgeting semantics (current)
+
+For a given month + category:
+
+- **Budgeted** = sum of `BudgetAssigned` records in that month/category
+- **Activity** = sum of categorized transactions in that month/category
+- **Rollover** = previous month **Available** for that category
+- **Available** = Rollover + Budgeted + Activity
+
+“Ready to Assign” is currently:
+
+- **Ready to Assign** = uncategorized inflows in the selected month − total Budgeted in the selected month
+
 
 ---
 
@@ -196,7 +212,8 @@ All non-trivial technical decisions are documented as **ADRs**:
 adrs/
 ├── 0001-offline-first.md
 ├── 0002-deterministic-domain-model.md
-└── 0003-indexeddb-schema-and-record-storage.md
+├── 0003-indexeddb-schema-and-record-storage.md
+└── 0004-record-ids-and-ordering-strategy.md
 docs/
 └── architecture/
     └── domain-engine.md
