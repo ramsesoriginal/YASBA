@@ -11,6 +11,7 @@
 ![Status](https://img.shields.io/badge/status-Phase%200%20%7C%20Setup-informational)
 ![Platform](https://img.shields.io/badge/platform-web%20%7C%20pwa-lightgrey)
 ![Tech](https://img.shields.io/badge/stack-React%20%2B%20TypeScript%20%2B%20Python-blueviolet)
+![CI](https://github.com/ramsesoriginal/YASBA/actions/workflows/ci.yml/badge.svg)
 
 </div>
 
@@ -105,7 +106,7 @@ This repository is intentionally structured as a **portfolio-grade monorepo**, s
 
 ```bash
 git clone https://github.com/ramsesoriginal/YASBA.git
-cd yasba
+cd YASBA
 mise install
 ```
 
@@ -121,6 +122,15 @@ cd backend
 uv sync
 uv run ruff check .
 ```
+
+### Fast path (Docker)
+
+```bash
+docker compose -f infra/compose.yml up --build
+```
+
+Then open http://localhost:5173
+More details: [`infra/README.md`](infra/README.md)
 
 ---
 
