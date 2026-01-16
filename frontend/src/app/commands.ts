@@ -4,6 +4,8 @@ import type {
   CategoryId,
   MoneyCents,
   IsoDateTime,
+  BudgetAssigned,
+  MonthKey,
 } from "../domain/types";
 
 function nowIso(): IsoDateTime {
@@ -69,5 +71,25 @@ export function cmdAddExpense(params: {
     categoryId: params.categoryId,
     payee: params.payee?.trim() || undefined,
     memo: params.memo?.trim() || undefined,
+  };
+}
+
+export function cmdAssignBudget(params: {
+  monthKey: MonthKey;
+  categoryId: string;
+  amountCents: number; // positive input, can be negative if you want to allow "unbudget"
+}): BudgetAssigned {
+  if (!params.monthKey) throw new Error("monthKey is required");
+  if (!params.categoryId) throw new Error("categoryId is required");
+  if (!Number.isInteger(params.amountCents)) throw new Error("Budget amount must be integer cents");
+  if (params.amountCents === 0) throw new Error("Budget amount must be non-zero");
+
+  return {
+    type: "BudgetAssigned",
+    id: newId(),
+    createdAt: nowIso(),
+    monthKey: params.monthKey,
+    categoryId: params.categoryId,
+    amountCents: params.amountCents,
   };
 }

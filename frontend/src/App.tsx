@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { DomainRecord } from "./domain/types";
 import { projectMonth } from "./domain/projectors/projectMonth";
 import { appendRecord, listAllRecords } from "./storage";
-import { cmdAddExpense, cmdAddIncome, cmdCreateCategory } from "./app/commands";
+import { cmdAddExpense, cmdAddIncome, cmdCreateCategory, cmdAssignBudget } from "./app/commands";
 import { currentMonthKey, isoFromDateInput, todayIsoDate } from "./app/month";
 import { formatCents } from "./app/moneyFormat";
 
@@ -22,6 +22,7 @@ export default function App() {
   const [expenseAmountEuros, setExpenseAmountEuros] = useState("10.00");
   const [expenseCategoryId, setExpenseCategoryId] = useState<string>("");
   const [expensePayee, setExpensePayee] = useState("");
+  const [budgetInputs, setBudgetInputs] = useState<Record<string, string>>({});
 
   useEffect(() => {
     (async () => {
@@ -61,6 +62,13 @@ export default function App() {
     const n = Number(normalized);
     if (!Number.isFinite(n)) throw new Error("Amount must be a number");
     return Math.round(n * 100);
+  }
+
+  function getBudgetInput(categoryId: string): string {
+    return budgetInputs[categoryId] ?? "";
+  }
+  function setBudgetInput(categoryId: string, value: string) {
+    setBudgetInputs((prev) => ({ ...prev, [categoryId]: value }));
   }
 
   if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
@@ -128,6 +136,14 @@ export default function App() {
                       borderBottom: "1px solid #eee",
                       padding: "8px 4px",
                     }}>
+                    Budgeted
+                  </th>
+                  <th
+                    style={{
+                      textAlign: "right",
+                      borderBottom: "1px solid #eee",
+                      padding: "8px 4px",
+                    }}>
                     Activity
                   </th>
                   <th
@@ -138,6 +154,14 @@ export default function App() {
                     }}>
                     Available
                   </th>
+                  <th
+                    style={{
+                      textAlign: "left",
+                      borderBottom: "1px solid #eee",
+                      padding: "8px 4px",
+                    }}>
+                    Assign
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -145,6 +169,14 @@ export default function App() {
                   <tr key={c.categoryId}>
                     <td style={{ padding: "8px 4px", borderBottom: "1px solid #f3f3f3" }}>
                       {c.name}
+                    </td>
+                    <td
+                      style={{
+                        padding: "8px 4px",
+                        borderBottom: "1px solid #f3f3f3",
+                        textAlign: "right",
+                      }}>
+                      {formatCents(c.budgetedCents)}
                     </td>
                     <td
                       style={{
@@ -161,6 +193,36 @@ export default function App() {
                         textAlign: "right",
                       }}>
                       {formatCents(c.availableCents)}
+                    </td>
+                    <td style={{ padding: "8px 4px", borderBottom: "1px solid #f3f3f3" }}>
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          try {
+                            const cents = eurosToCents(getBudgetInput(c.categoryId));
+                            const r = cmdAssignBudget({
+                              monthKey,
+                              categoryId: c.categoryId,
+                              amountCents: cents,
+                            });
+                            void handleAppend(r);
+                            setBudgetInput(c.categoryId, "");
+                          } catch (e2) {
+                            setErr({
+                              message: e2 instanceof Error ? e2.message : "Invalid budget amount",
+                            });
+                          }
+                        }}
+                        style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <input
+                          value={getBudgetInput(c.categoryId)}
+                          onChange={(e) => setBudgetInput(c.categoryId, e.target.value)}
+                          placeholder="€"
+                          aria-label={`Assign budget for ${c.name}`}
+                          style={{ width: 110 }}
+                        />
+                        <button type="submit">Assign</button>
+                      </form>
                     </td>
                   </tr>
                 ))}
