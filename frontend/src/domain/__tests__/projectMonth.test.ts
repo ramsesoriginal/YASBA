@@ -99,4 +99,30 @@ describe("projectMonth", () => {
 
     expect(snapA).toEqual(snapB);
   });
+
+  it("does not wipe balances if CategoryCreated sorts after a transaction (occurredAt earlier than createdAt)", () => {
+    const records: DomainRecord[] = [
+      {
+        type: "TransactionCreated",
+        id: "tx-1",
+        createdAt: "2026-01-16T13:50:48.172Z",
+        occurredAt: "2026-01-16T12:00:00.000Z",
+        amountCents: -10_00,
+        categoryId: "cat-groceries",
+      },
+      {
+        type: "CategoryCreated",
+        id: "catrec-1",
+        createdAt: "2026-01-16T13:49:47.316Z",
+        categoryId: "cat-groceries",
+        name: "Groceries",
+      },
+    ];
+
+    const snap = projectMonth(records, "2026-01");
+    const groceries = snap.categories.find((c) => c.categoryId === "cat-groceries");
+    expect(groceries?.name).toBe("Groceries");
+    expect(groceries?.activityCents).toBe(-10_00);
+    expect(groceries?.availableCents).toBe(-10_00);
+  });
 });

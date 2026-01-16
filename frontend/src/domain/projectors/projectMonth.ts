@@ -48,12 +48,13 @@ export function projectMonth(records: readonly DomainRecord[], monthKey: MonthKe
 
   for (const r of ordered) {
     if (r.type === "CategoryCreated") {
-      // Last write wins on name in case of duplicates (we’ll add rename/ordering later).
+      // Preserve balances if we already saw transactions referencing this categoryId.
+      const existing = categoriesById.get(r.categoryId);
       categoriesById.set(r.categoryId, {
         categoryId: r.categoryId,
         name: r.name,
-        activityCents: 0,
-        availableCents: 0,
+        activityCents: existing?.activityCents ?? 0,
+        availableCents: existing?.availableCents ?? 0,
       });
       continue;
     }
