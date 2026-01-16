@@ -5,6 +5,7 @@ import { appendRecord, listAllRecords } from "./storage";
 import { cmdAddExpense, cmdAddIncome, cmdCreateCategory, cmdAssignBudget } from "./app/commands";
 import { currentMonthKey, isoFromDateInput, todayIsoDate } from "./app/month";
 import { formatCents } from "./app/moneyFormat";
+import { listMonthTransactions } from "./domain/views/monthTransactions";
 
 type UiError = { message: string };
 
@@ -38,6 +39,22 @@ export default function App() {
   }, []);
 
   const snapshot = useMemo(() => projectMonth(records, monthKey), [records, monthKey]);
+
+  const categoryNameById = useMemo(() => {
+    const map = new Map<string, string>();
+
+    // Deterministic enough for now: last CategoryCreated in record order wins.
+    // (Edits/renames come later as explicit records.)
+    for (const r of records) {
+      if (r.type === "CategoryCreated") {
+        map.set(r.categoryId, r.name);
+      }
+    }
+
+    return map;
+  }, [records]);
+
+  const monthTx = useMemo(() => listMonthTransactions(records, monthKey), [records, monthKey]);
 
   // Default expense category selection to first available
   useEffect(() => {
@@ -343,6 +360,94 @@ export default function App() {
               Add expense
             </button>
           </form>
+        </section>
+
+        <section style={{ padding: 12, border: "1px solid #ddd", borderRadius: 8 }}>
+          <h2 style={{ marginTop: 0 }}>Transactions</h2>
+
+          {monthTx.length === 0 ? (
+            <p style={{ opacity: 0.8 }}>No transactions in this month yet.</p>
+          ) : (
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th
+                    style={{
+                      textAlign: "left",
+                      borderBottom: "1px solid #eee",
+                      padding: "8px 4px",
+                    }}>
+                    Date
+                  </th>
+                  <th
+                    style={{
+                      textAlign: "left",
+                      borderBottom: "1px solid #eee",
+                      padding: "8px 4px",
+                    }}>
+                    Payee / Memo
+                  </th>
+                  <th
+                    style={{
+                      textAlign: "left",
+                      borderBottom: "1px solid #eee",
+                      padding: "8px 4px",
+                    }}>
+                    Category
+                  </th>
+                  <th
+                    style={{
+                      textAlign: "right",
+                      borderBottom: "1px solid #eee",
+                      padding: "8px 4px",
+                    }}>
+                    Amount
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthTx.map((t) => {
+                  const categoryName = t.categoryId
+                    ? (categoryNameById.get(t.categoryId) ?? "(unknown category)")
+                    : "Ready to Assign";
+                  const payeeMemo = t.payee?.trim()
+                    ? t.memo?.trim()
+                      ? `${t.payee} — ${t.memo}`
+                      : t.payee
+                    : t.memo?.trim()
+                      ? t.memo
+                      : "";
+
+                  return (
+                    <tr key={t.transactionId}>
+                      <td
+                        style={{
+                          padding: "8px 4px",
+                          borderBottom: "1px solid #f3f3f3",
+                          whiteSpace: "nowrap",
+                        }}>
+                        {t.occurredAt.slice(0, 10)}
+                      </td>
+                      <td style={{ padding: "8px 4px", borderBottom: "1px solid #f3f3f3" }}>
+                        {payeeMemo || <span style={{ opacity: 0.6 }}>(no details)</span>}
+                      </td>
+                      <td style={{ padding: "8px 4px", borderBottom: "1px solid #f3f3f3" }}>
+                        {categoryName}
+                      </td>
+                      <td
+                        style={{
+                          padding: "8px 4px",
+                          borderBottom: "1px solid #f3f3f3",
+                          textAlign: "right",
+                        }}>
+                        {formatCents(t.amountCents)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </section>
       </main>
 
