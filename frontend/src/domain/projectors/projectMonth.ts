@@ -72,16 +72,32 @@ function ensureCategory(
   return created;
 }
 
+function minMonthKeyFromRecords(records: readonly DomainRecord[]): MonthKey | null {
+  let min: MonthKey | null = null;
+
+  for (const r of records) {
+    let mk: MonthKey | null = null;
+
+    if (r.type === "BudgetAssigned") mk = r.monthKey;
+    if (r.type === "TransactionCreated") mk = monthKeyFromIso(r.occurredAt);
+
+    if (!mk) continue;
+    if (!min || mk < min) min = mk;
+  }
+
+  return min;
+}
+
 /**
- * Month-local pass: categories + (budgeted/activity) totals for the target month.
- * Does NOT apply rollover. Available will be computed later.
+ * Month-local pass (no rollover):
+ * - collects categories (names)
+ * - sums budgeted/activity for the target month
+ * - computes readyToAssign = inflowUncategorized - budgetedTotal
  */
-function projectMonthBase(
-  records: readonly DomainRecord[],
+function projectMonthBaseFromOrdered(
+  ordered: readonly DomainRecord[],
   monthKey: MonthKey
 ): { readyToAssignCents: MoneyCents; categoriesById: Map<string, WorkingCategory> } {
-  const ordered = [...records].sort((a, b) => compareSortKey(sortKey(a), sortKey(b)));
-
   const categoriesById = new Map<string, WorkingCategory>();
 
   let inflowUncategorized: MoneyCents = 0;
@@ -127,89 +143,58 @@ function projectMonthBase(
     cat.activityCents += amount;
   }
 
-  const readyToAssignCents = inflowUncategorized - budgetedTotal;
-  return { readyToAssignCents, categoriesById };
+  return { readyToAssignCents: inflowUncategorized - budgetedTotal, categoriesById };
 }
 
 /**
- * Rollover-aware projection used by the UI:
- * available = rollover + budgeted + activity
+ * Rollover-aware month projection with memoization:
+ * - available = rollover(prev.available) + budgeted + activity
  */
 export function projectMonth(records: readonly DomainRecord[], monthKey: MonthKey): MonthSnapshot {
-  const base = projectMonthBase(records, monthKey);
+  const ordered = [...records].sort((a, b) => compareSortKey(sortKey(a), sortKey(b)));
+  const minMonth = minMonthKeyFromRecords(ordered);
 
-  // Compute previous month snapshot to source rollover.
-  const prevKey = prevMonthKey(monthKey);
+  const memo = new Map<MonthKey, MonthSnapshot>();
 
-  const prevSnap = projectMonthNoRecursion(records, prevKey);
-  const rolloverSource = new Map<string, MoneyCents>();
-  for (const c of prevSnap.categories) rolloverSource.set(c.categoryId, c.availableCents);
+  const project = (mk: MonthKey): MonthSnapshot => {
+    const cached = memo.get(mk);
+    if (cached) return cached;
 
-  // Apply rollover and compute available
-  for (const cat of base.categoriesById.values()) {
-    cat.rolloverCents = rolloverSource.get(cat.categoryId) ?? 0;
-    cat.availableCents = cat.rolloverCents + cat.budgetedCents + cat.activityCents;
-  }
+    const base = projectMonthBaseFromOrdered(ordered, mk);
 
-  const categories: CategorySnapshot[] = [...base.categoriesById.values()].map((c) => ({
-    categoryId: c.categoryId,
-    name: c.name,
-    rolloverCents: c.rolloverCents,
-    budgetedCents: c.budgetedCents,
-    activityCents: c.activityCents,
-    availableCents: c.availableCents,
-  }));
+    // Base case: no earlier month in records -> rollover treated as 0
+    let rolloverSource = new Map<string, MoneyCents>();
+    if (minMonth && mk > minMonth) {
+      const prev = project(prevMonthKey(mk));
+      rolloverSource = new Map(prev.categories.map((c) => [c.categoryId, c.availableCents]));
+    }
 
-  categories.sort((a, b) =>
-    a.name === b.name ? (a.categoryId < b.categoryId ? -1 : 1) : a.name < b.name ? -1 : 1
-  );
+    for (const cat of base.categoriesById.values()) {
+      cat.rolloverCents = rolloverSource.get(cat.categoryId) ?? 0;
+      cat.availableCents = cat.rolloverCents + cat.budgetedCents + cat.activityCents;
+    }
 
-  return { monthKey, readyToAssignCents: base.readyToAssignCents, categories };
-}
+    const categories: CategorySnapshot[] = [...base.categoriesById.values()].map((c) => ({
+      categoryId: c.categoryId,
+      name: c.name,
+      rolloverCents: c.rolloverCents,
+      budgetedCents: c.budgetedCents,
+      activityCents: c.activityCents,
+      availableCents: c.availableCents,
+    }));
 
-/**
- * Helper to compute rollover exactly one month back without unbounded recursion.
- * This computes a month snapshot assuming rollover is sourced from ONE month earlier,
- * and stops at that point (monthKey-2 is treated as zero rollover).
- *
- * This is sufficient for Phase 1 MVP navigation/planning and avoids deep recursion.
- */
-function projectMonthNoRecursion(
-  records: readonly DomainRecord[],
-  monthKey: MonthKey
-): MonthSnapshot {
-  const base = projectMonthBase(records, monthKey);
+    categories.sort((a, b) =>
+      a.name === b.name ? (a.categoryId < b.categoryId ? -1 : 1) : a.name < b.name ? -1 : 1
+    );
 
-  const prevKey = prevMonthKey(monthKey);
-  const prevBase = projectMonthBase(records, prevKey);
+    const snap: MonthSnapshot = {
+      monthKey: mk,
+      readyToAssignCents: base.readyToAssignCents,
+      categories,
+    };
+    memo.set(mk, snap);
+    return snap;
+  };
 
-  // monthKey-2 rollover treated as 0 (base case for bounded recursion)
-  for (const prevCat of prevBase.categoriesById.values()) {
-    prevCat.rolloverCents = 0;
-    prevCat.availableCents = prevCat.budgetedCents + prevCat.activityCents;
-  }
-
-  const rolloverSource = new Map<string, MoneyCents>();
-  for (const c of prevBase.categoriesById.values())
-    rolloverSource.set(c.categoryId, c.availableCents);
-
-  for (const cat of base.categoriesById.values()) {
-    cat.rolloverCents = rolloverSource.get(cat.categoryId) ?? 0;
-    cat.availableCents = cat.rolloverCents + cat.budgetedCents + cat.activityCents;
-  }
-
-  const categories: CategorySnapshot[] = [...base.categoriesById.values()].map((c) => ({
-    categoryId: c.categoryId,
-    name: c.name,
-    rolloverCents: c.rolloverCents,
-    budgetedCents: c.budgetedCents,
-    activityCents: c.activityCents,
-    availableCents: c.availableCents,
-  }));
-
-  categories.sort((a, b) =>
-    a.name === b.name ? (a.categoryId < b.categoryId ? -1 : 1) : a.name < b.name ? -1 : 1
-  );
-
-  return { monthKey, readyToAssignCents: base.readyToAssignCents, categories };
+  return project(monthKey);
 }

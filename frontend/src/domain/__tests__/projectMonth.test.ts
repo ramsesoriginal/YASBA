@@ -236,4 +236,58 @@ describe("projectMonth", () => {
     expect(groceries?.rolloverCents).toBe(40_00);
     expect(groceries?.availableCents).toBe(40_00);
   });
+
+  it("supports multi-month planning: rollover chains when projecting far months directly", () => {
+    const records: DomainRecord[] = [
+      {
+        type: "CategoryCreated",
+        id: "r-cat-1",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        categoryId: "cat-groceries",
+        name: "Groceries",
+      },
+      // January: budget 50, spend 10 => available 40
+      {
+        type: "BudgetAssigned",
+        id: "r-bud-jan",
+        createdAt: "2026-01-01T01:00:00.000Z",
+        monthKey: "2026-01",
+        categoryId: "cat-groceries",
+        amountCents: 50_00,
+      },
+      {
+        type: "TransactionCreated",
+        id: "r-exp-jan",
+        createdAt: "2026-01-03T00:00:00.000Z",
+        occurredAt: "2026-01-03T12:00:00.000Z",
+        amountCents: -10_00,
+        categoryId: "cat-groceries",
+      },
+
+      // Ensure category exists in later months too (name is stable)
+      {
+        type: "CategoryCreated",
+        id: "r-cat-2",
+        createdAt: "2026-02-01T00:00:00.000Z",
+        categoryId: "cat-groceries",
+        name: "Groceries",
+      },
+      {
+        type: "CategoryCreated",
+        id: "r-cat-3",
+        createdAt: "2026-03-01T00:00:00.000Z",
+        categoryId: "cat-groceries",
+        name: "Groceries",
+      },
+    ];
+
+    const mar = projectMonth(records, "2026-03");
+    const groceries = mar.categories.find((c) => c.categoryId === "cat-groceries");
+
+    // Jan available 40 -> Feb rollover 40 -> Mar rollover 40 (no activity/budget in Feb/Mar)
+    expect(groceries?.rolloverCents).toBe(40_00);
+    expect(groceries?.budgetedCents).toBe(0);
+    expect(groceries?.activityCents).toBe(0);
+    expect(groceries?.availableCents).toBe(40_00);
+  });
 });
