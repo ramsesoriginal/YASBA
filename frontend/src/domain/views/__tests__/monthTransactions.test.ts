@@ -123,4 +123,102 @@ describe("listMonthTransactions", () => {
 
     expect(ids).toEqual(["tx-1"]);
   });
+
+  it("applies corrections in the month transaction list (original values superseded)", () => {
+    const records: DomainRecord[] = [
+      {
+        type: "TransactionCreated",
+        id: "tx-1",
+        createdAt: "2026-01-02T00:00:00.000Z",
+        occurredAt: "2026-01-02T12:00:00.000Z",
+        amountCents: -10_00,
+        categoryId: "cat-a",
+        payee: "Rewe",
+      },
+      {
+        type: "TransactionCorrected",
+        id: "corr-1",
+        createdAt: "2026-01-02T12:01:00.000Z",
+        transactionId: "tx-1",
+        replacement: {
+          occurredAt: "2026-01-02T12:00:00.000Z",
+          amountCents: -12_00,
+          categoryId: "cat-b",
+          payee: "Rewe",
+          memo: "moved category + amount",
+        },
+      },
+    ];
+
+    const jan = listMonthTransactions(records, "2026-01");
+    expect(jan).toHaveLength(1);
+    expect(jan[0].transactionId).toBe("tx-1");
+    expect(jan[0].amountCents).toBe(-12_00);
+    expect(jan[0].categoryId).toBe("cat-b");
+    expect(jan[0].memo).toBe("moved category + amount");
+  });
+
+  it("does not show transactions moved out of the month by correction", () => {
+    const records: DomainRecord[] = [
+      {
+        type: "TransactionCreated",
+        id: "tx-1",
+        createdAt: "2026-01-31T10:00:00.000Z",
+        occurredAt: "2026-01-31T09:00:00.000Z",
+        amountCents: -10_00,
+        categoryId: "cat-a",
+      },
+      {
+        type: "TransactionCorrected",
+        id: "corr-1",
+        createdAt: "2026-01-31T10:01:00.000Z",
+        transactionId: "tx-1",
+        replacement: {
+          occurredAt: "2026-02-01T09:00:00.000Z",
+          amountCents: -10_00,
+          categoryId: "cat-a",
+        },
+      },
+    ];
+
+    const jan = listMonthTransactions(records, "2026-01");
+    const feb = listMonthTransactions(records, "2026-02");
+
+    expect(jan).toHaveLength(0);
+    expect(feb).toHaveLength(1);
+    expect(feb[0].transactionId).toBe("tx-1");
+  });
+
+  it("void wins over correction in the month list", () => {
+    const records: DomainRecord[] = [
+      {
+        type: "TransactionCreated",
+        id: "tx-1",
+        createdAt: "2026-01-02T00:00:00.000Z",
+        occurredAt: "2026-01-02T12:00:00.000Z",
+        amountCents: -10_00,
+        categoryId: "cat-a",
+      },
+      {
+        type: "TransactionCorrected",
+        id: "corr-1",
+        createdAt: "2026-01-02T12:01:00.000Z",
+        transactionId: "tx-1",
+        replacement: {
+          occurredAt: "2026-01-02T12:00:00.000Z",
+          amountCents: -999_00,
+          categoryId: "cat-a",
+        },
+      },
+      {
+        type: "TransactionVoided",
+        id: "void-1",
+        createdAt: "2026-01-02T12:02:00.000Z",
+        transactionId: "tx-1",
+      },
+    ];
+
+    const jan = listMonthTransactions(records, "2026-01");
+    expect(jan).toHaveLength(0);
+  });
 });
