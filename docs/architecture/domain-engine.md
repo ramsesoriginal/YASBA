@@ -61,4 +61,6 @@ Semantics are defined in ADR-0005.
 - ADR-0001 Offline-first
 - ADR-0002 Deterministic domain model
 - ADR-0003 IndexedDB schema and record storage
-- ADR-0004 Record IDs and ordering strategy.md
+- ADR-0004 Record IDs and ordering strategy
+- ADR-0005 Append-only Transaction Corrections (Void + Corrected)
+- ADR 0006 Category Lifecycle, Hierarchy, and Ordering
