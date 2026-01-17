@@ -9,10 +9,13 @@ import {
   cmdAssignBudget,
   cmdVoidTransaction,
   cmdCorrectTransaction,
+  cmdRenameCategory,
+  cmdArchiveCategory,
 } from "./app/commands";
 import { currentMonthKey, isoFromDateInput, todayIsoDate } from "./app/month";
 import { formatCents } from "./app/moneyFormat";
 import { listMonthTransactions } from "./domain/views/monthTransactions";
+import { listCategories } from "./domain/views/categoriesView";
 
 type UiError = { message: string };
 
@@ -31,6 +34,9 @@ export default function App() {
   const [expenseCategoryId, setExpenseCategoryId] = useState<string>("");
   const [expensePayee, setExpensePayee] = useState("");
   const [budgetInputs, setBudgetInputs] = useState<Record<string, string>>({});
+
+  const [showArchivedCategories, setShowArchivedCategories] = useState(false);
+  const [renameDrafts, setRenameDrafts] = useState<Record<string, string>>({});
 
   type EditDraft = {
     occurredDate: string; // YYYY-MM-DD
@@ -58,19 +64,18 @@ export default function App() {
 
   const snapshot = useMemo(() => projectMonth(records, monthKey), [records, monthKey]);
 
+  const categoriesView = useMemo(() => listCategories(records), [records]);
+
+  const activeCategoriesView = useMemo(
+    () => categoriesView.filter((c) => !c.archived),
+    [categoriesView]
+  );
+
   const categoryNameById = useMemo(() => {
     const map = new Map<string, string>();
-
-    // Deterministic enough for now: last CategoryCreated in record order wins.
-    // (Edits/renames come later as explicit records.)
-    for (const r of records) {
-      if (r.type === "CategoryCreated") {
-        map.set(r.categoryId, r.name);
-      }
-    }
-
+    for (const c of categoriesView) map.set(c.categoryId, c.name);
     return map;
-  }, [records]);
+  }, [categoriesView]);
 
   const monthTx = useMemo(() => listMonthTransactions(records, monthKey), [records, monthKey]);
 
@@ -80,6 +85,20 @@ export default function App() {
       setExpenseCategoryId(snapshot.categories[0].categoryId);
     }
   }, [expenseCategoryId, snapshot.categories]);
+
+  const monthCategoryRows = useMemo(() => {
+    const byId = new Map(categoriesView.map((c) => [c.categoryId, c]));
+    return snapshot.categories
+      .map((s) => {
+        const meta = byId.get(s.categoryId);
+        return {
+          ...s,
+          name: meta?.name ?? s.name,
+          archived: meta?.archived ?? false,
+        };
+      })
+      .filter((r) => showArchivedCategories || !r.archived);
+  }, [snapshot.categories, categoriesView, showArchivedCategories]);
 
   const categoryOptions = useMemo(
     () => snapshot.categories.map((c) => ({ id: c.categoryId, name: c.name })),
@@ -117,6 +136,13 @@ export default function App() {
   }
   function setBudgetInput(categoryId: string, value: string) {
     setBudgetInputs((prev) => ({ ...prev, [categoryId]: value }));
+  }
+
+  function getRenameDraft(categoryId: string, fallback: string): string {
+    return renameDrafts[categoryId] ?? fallback;
+  }
+  function setRenameDraft(categoryId: string, value: string) {
+    setRenameDrafts((prev) => ({ ...prev, [categoryId]: value }));
   }
 
   if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
@@ -187,6 +213,15 @@ export default function App() {
         <section style={{ padding: 12, border: "1px solid #ddd", borderRadius: 8 }}>
           <h2 style={{ marginTop: 0 }}>Categories</h2>
 
+          <label style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+            <input
+              type="checkbox"
+              checked={showArchivedCategories}
+              onChange={(e) => setShowArchivedCategories(e.target.checked)}
+            />
+            Show archived categories
+          </label>
+
           {snapshot.categories.length === 0 ? (
             <p style={{ opacity: 0.8 }}>No categories yet. Add one below.</p>
           ) : (
@@ -236,11 +271,63 @@ export default function App() {
                 </tr>
               </thead>
               <tbody>
-                {snapshot.categories.map((c) => (
+                {monthCategoryRows.map((c) => (
                   <tr key={c.categoryId}>
                     <td style={{ padding: "8px 4px", borderBottom: "1px solid #f3f3f3" }}>
-                      {c.name}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div>{c.name}</div>
+
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            try {
+                              const r = cmdRenameCategory({
+                                categoryId: c.categoryId,
+                                name: getRenameDraft(c.categoryId, c.name),
+                              });
+                              void handleAppend(r);
+                            } catch (e2) {
+                              setErr({
+                                message:
+                                  e2 instanceof Error ? e2.message : "Failed to rename category",
+                              });
+                            }
+                          }}
+                          style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <input
+                            value={getRenameDraft(c.categoryId, c.name)}
+                            onChange={(e) => setRenameDraft(c.categoryId, e.target.value)}
+                            aria-label={`Rename ${c.name}`}
+                            style={{ width: 220 }}
+                          />
+                          <button type="submit">Rename</button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const ok = window.confirm(
+                                c.archived ? "Unarchive this category?" : "Archive this category?"
+                              );
+                              if (!ok) return;
+                              try {
+                                const r = cmdArchiveCategory({
+                                  categoryId: c.categoryId,
+                                  archived: !c.archived,
+                                });
+                                void handleAppend(r);
+                              } catch (e2) {
+                                setErr({
+                                  message:
+                                    e2 instanceof Error ? e2.message : "Failed to archive category",
+                                });
+                              }
+                            }}>
+                            {c.archived ? "Unarchive" : "Archive"}
+                          </button>
+                        </form>
+                      </div>
                     </td>
+
                     <td
                       style={{
                         padding: "8px 4px",
@@ -395,7 +482,7 @@ export default function App() {
               <select
                 value={expenseCategoryId}
                 onChange={(e) => setExpenseCategoryId(e.target.value)}>
-                {snapshot.categories.map((c) => (
+                {activeCategoriesView.map((c) => (
                   <option key={c.categoryId} value={c.categoryId}>
                     {c.name}
                   </option>
@@ -652,9 +739,7 @@ export default function App() {
         </section>
       </main>
 
-      <footer style={{ marginTop: 24, opacity: 0.7, fontSize: 12 }}>
-        Phase 1 Slice 1: offline-only records → deterministic projection.
-      </footer>
+      <footer style={{ marginTop: 24, opacity: 0.7, fontSize: 12 }}>Phase 1 Slice 4.</footer>
     </div>
   );
 }
