@@ -2,6 +2,7 @@ import type {
   CategoryCreated,
   CategoryArchived,
   CategoryRenamed,
+  CategoryReordered,
   TransactionCreated,
   CategoryId,
   MoneyCents,
@@ -166,5 +167,18 @@ export function cmdArchiveCategory(params: {
     createdAt: nowIso(),
     categoryId,
     archived: params.archived,
+  };
+}
+
+export function cmdReorderCategories(orderedCategoryIds: string[]): CategoryReordered {
+  if (!Array.isArray(orderedCategoryIds) || orderedCategoryIds.length === 0) {
+    throw new Error("orderedCategoryIds must be a non-empty array");
+  }
+
+  return {
+    type: "CategoryReordered",
+    id: newId(),
+    createdAt: nowIso(),
+    orderedCategoryIds: orderedCategoryIds.map((x) => x.trim()).filter(Boolean),
   };
 }

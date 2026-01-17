@@ -11,6 +11,7 @@ import {
   cmdCorrectTransaction,
   cmdRenameCategory,
   cmdArchiveCategory,
+  cmdReorderCategories,
 } from "./app/commands";
 import { currentMonthKey, isoFromDateInput, todayIsoDate } from "./app/month";
 import { formatCents } from "./app/moneyFormat";
@@ -81,28 +82,35 @@ export default function App() {
 
   // Default expense category selection to first available
   useEffect(() => {
-    if (!expenseCategoryId && snapshot.categories.length > 0) {
-      setExpenseCategoryId(snapshot.categories[0].categoryId);
+    if (!expenseCategoryId && activeCategoriesView.length > 0) {
+      setExpenseCategoryId(activeCategoriesView[0].categoryId);
     }
-  }, [expenseCategoryId, snapshot.categories]);
+  }, [expenseCategoryId, activeCategoriesView]);
 
   const monthCategoryRows = useMemo(() => {
-    const byId = new Map(categoriesView.map((c) => [c.categoryId, c]));
-    return snapshot.categories
-      .map((s) => {
-        const meta = byId.get(s.categoryId);
+    const snapById = new Map(snapshot.categories.map((s) => [s.categoryId, s]));
+
+    return categoriesView
+      .map((meta) => {
+        const s = snapById.get(meta.categoryId);
+
+        // if a category exists in the view but isn't in snapshot (should be rare),
+        // fall back to zeroed money fields
         return {
-          ...s,
-          name: meta?.name ?? s.name,
-          archived: meta?.archived ?? false,
+          categoryId: meta.categoryId,
+          name: meta.name,
+          archived: meta.archived,
+          budgetedCents: s?.budgetedCents ?? 0,
+          activityCents: s?.activityCents ?? 0,
+          availableCents: s?.availableCents ?? 0,
         };
       })
       .filter((r) => showArchivedCategories || !r.archived);
   }, [snapshot.categories, categoriesView, showArchivedCategories]);
 
   const categoryOptions = useMemo(
-    () => snapshot.categories.map((c) => ({ id: c.categoryId, name: c.name })),
-    [snapshot.categories]
+    () => activeCategoriesView.map((c) => ({ id: c.categoryId, name: c.name })),
+    [activeCategoriesView]
   );
 
   async function handleAppend(record: DomainRecord) {
@@ -170,6 +178,41 @@ export default function App() {
     setEditDraft(null);
   }
 
+  function move<T>(arr: readonly T[], from: number, to: number): T[] {
+    const a = arr.slice();
+    const [item] = a.splice(from, 1);
+    a.splice(to, 0, item);
+    return a;
+  }
+
+  function reorderCategory(categoryId: string, dir: "up" | "down") {
+    // Canonical current order across all categories (already snapshot-resolved)
+    const allIds = categoriesView.map((c) => c.categoryId);
+
+    const activeIds = categoriesView.filter((c) => !c.archived).map((c) => c.categoryId);
+    const archivedIds = categoriesView.filter((c) => c.archived).map((c) => c.categoryId);
+
+    const movableIds = showArchivedCategories ? allIds : activeIds;
+
+    const idx = movableIds.indexOf(categoryId);
+    if (idx === -1) return;
+
+    const nextIdx = dir === "up" ? idx - 1 : idx + 1;
+    if (nextIdx < 0 || nextIdx >= movableIds.length) return;
+
+    const moved = move(movableIds, idx, nextIdx);
+
+    // If archived are hidden, keep them appended in existing order.
+    const nextAll = showArchivedCategories ? moved : [...moved, ...archivedIds];
+
+    try {
+      const r = cmdReorderCategories(nextAll);
+      void handleAppend(r);
+    } catch (e) {
+      setErr({ message: e instanceof Error ? e.message : "Failed to reorder categories" });
+    }
+  }
+
   return (
     <div
       style={{ maxWidth: 960, margin: "0 auto", padding: 16, fontFamily: "system-ui, sans-serif" }}>
@@ -222,7 +265,7 @@ export default function App() {
             Show archived categories
           </label>
 
-          {snapshot.categories.length === 0 ? (
+          {monthCategoryRows.length === 0 ? (
             <p style={{ opacity: 0.8 }}>No categories yet. Add one below.</p>
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -271,119 +314,148 @@ export default function App() {
                 </tr>
               </thead>
               <tbody>
-                {monthCategoryRows.map((c) => (
-                  <tr key={c.categoryId}>
-                    <td style={{ padding: "8px 4px", borderBottom: "1px solid #f3f3f3" }}>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        <div>{c.name}</div>
+                {monthCategoryRows.map((c) => {
+                  const movableIds = showArchivedCategories
+                    ? categoriesView.map((x) => x.categoryId)
+                    : categoriesView.filter((x) => !x.archived).map((x) => x.categoryId);
 
-                        <form
-                          onSubmit={(e) => {
-                            e.preventDefault();
-                            try {
-                              const r = cmdRenameCategory({
-                                categoryId: c.categoryId,
-                                name: getRenameDraft(c.categoryId, c.name),
-                              });
-                              void handleAppend(r);
-                            } catch (e2) {
-                              setErr({
-                                message:
-                                  e2 instanceof Error ? e2.message : "Failed to rename category",
-                              });
-                            }
-                          }}
-                          style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <input
-                            value={getRenameDraft(c.categoryId, c.name)}
-                            onChange={(e) => setRenameDraft(c.categoryId, e.target.value)}
-                            aria-label={`Rename ${c.name}`}
-                            style={{ width: 220 }}
-                          />
-                          <button type="submit">Rename</button>
+                  const idx = movableIds.indexOf(c.categoryId);
+                  const isFirst = idx <= 0;
+                  const isLast = idx === movableIds.length - 1;
 
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const ok = window.confirm(
-                                c.archived ? "Unarchive this category?" : "Archive this category?"
-                              );
-                              if (!ok) return;
+                  return (
+                    <tr key={c.categoryId}>
+                      <td style={{ padding: "8px 4px", borderBottom: "1px solid #f3f3f3" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          <div>{c.name}</div>
+
+                          <form
+                            onSubmit={(e) => {
+                              e.preventDefault();
                               try {
-                                const r = cmdArchiveCategory({
+                                const r = cmdRenameCategory({
                                   categoryId: c.categoryId,
-                                  archived: !c.archived,
+                                  name: getRenameDraft(c.categoryId, c.name),
                                 });
                                 void handleAppend(r);
                               } catch (e2) {
                                 setErr({
                                   message:
-                                    e2 instanceof Error ? e2.message : "Failed to archive category",
+                                    e2 instanceof Error ? e2.message : "Failed to rename category",
                                 });
                               }
-                            }}>
-                            {c.archived ? "Unarchive" : "Archive"}
-                          </button>
-                        </form>
-                      </div>
-                    </td>
+                            }}
+                            style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                            <input
+                              value={getRenameDraft(c.categoryId, c.name)}
+                              onChange={(e) => setRenameDraft(c.categoryId, e.target.value)}
+                              aria-label={`Rename ${c.name}`}
+                              style={{ width: 220 }}
+                            />
+                            <button type="submit">Rename</button>
 
-                    <td
-                      style={{
-                        padding: "8px 4px",
-                        borderBottom: "1px solid #f3f3f3",
-                        textAlign: "right",
-                      }}>
-                      {formatCents(c.budgetedCents)}
-                    </td>
-                    <td
-                      style={{
-                        padding: "8px 4px",
-                        borderBottom: "1px solid #f3f3f3",
-                        textAlign: "right",
-                      }}>
-                      {formatCents(c.activityCents)}
-                    </td>
-                    <td
-                      style={{
-                        padding: "8px 4px",
-                        borderBottom: "1px solid #f3f3f3",
-                        textAlign: "right",
-                      }}>
-                      {formatCents(c.availableCents)}
-                    </td>
-                    <td style={{ padding: "8px 4px", borderBottom: "1px solid #f3f3f3" }}>
-                      <form
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          try {
-                            const cents = eurosToCents(getBudgetInput(c.categoryId));
-                            const r = cmdAssignBudget({
-                              monthKey,
-                              categoryId: c.categoryId,
-                              amountCents: cents,
-                            });
-                            void handleAppend(r);
-                            setBudgetInput(c.categoryId, "");
-                          } catch (e2) {
-                            setErr({
-                              message: e2 instanceof Error ? e2.message : "Invalid budget amount",
-                            });
-                          }
-                        }}
-                        style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <input
-                          value={getBudgetInput(c.categoryId)}
-                          onChange={(e) => setBudgetInput(c.categoryId, e.target.value)}
-                          placeholder="€"
-                          aria-label={`Assign budget for ${c.name}`}
-                          style={{ width: 110 }}
-                        />
-                        <button type="submit">Assign</button>
-                      </form>
-                    </td>
-                  </tr>
-                ))}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const ok = window.confirm(
+                                  c.archived ? "Unarchive this category?" : "Archive this category?"
+                                );
+                                if (!ok) return;
+                                try {
+                                  const r = cmdArchiveCategory({
+                                    categoryId: c.categoryId,
+                                    archived: !c.archived,
+                                  });
+                                  void handleAppend(r);
+                                } catch (e2) {
+                                  setErr({
+                                    message:
+                                      e2 instanceof Error
+                                        ? e2.message
+                                        : "Failed to archive category",
+                                  });
+                                }
+                              }}>
+                              {c.archived ? "Unarchive" : "Archive"}
+                            </button>
+                          </form>
+                        </div>
+                        <div style={{ display: "inline-flex", gap: 6 }}>
+                          <button
+                            type="button"
+                            onClick={() => reorderCategory(c.categoryId, "up")}
+                            disabled={isFirst}
+                            aria-label={`Move ${c.name} up`}>
+                            ↑
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => reorderCategory(c.categoryId, "down")}
+                            disabled={isLast}
+                            aria-label={`Move ${c.name} down`}>
+                            ↓
+                          </button>
+                        </div>
+                      </td>
+
+                      <td
+                        style={{
+                          padding: "8px 4px",
+                          borderBottom: "1px solid #f3f3f3",
+                          textAlign: "right",
+                        }}>
+                        {formatCents(c.budgetedCents)}
+                      </td>
+                      <td
+                        style={{
+                          padding: "8px 4px",
+                          borderBottom: "1px solid #f3f3f3",
+                          textAlign: "right",
+                        }}>
+                        {formatCents(c.activityCents)}
+                      </td>
+                      <td
+                        style={{
+                          padding: "8px 4px",
+                          borderBottom: "1px solid #f3f3f3",
+                          textAlign: "right",
+                        }}>
+                        {formatCents(c.availableCents)}
+                      </td>
+                      <td style={{ padding: "8px 4px", borderBottom: "1px solid #f3f3f3" }}>
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            try {
+                              const cents = eurosToCents(getBudgetInput(c.categoryId));
+                              const r = cmdAssignBudget({
+                                monthKey,
+                                categoryId: c.categoryId,
+                                amountCents: cents,
+                              });
+                              void handleAppend(r);
+                              setBudgetInput(c.categoryId, "");
+                            } catch (e2) {
+                              setErr({
+                                message: e2 instanceof Error ? e2.message : "Invalid budget amount",
+                              });
+                            }
+                          }}
+                          style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <input
+                            value={getBudgetInput(c.categoryId)}
+                            onChange={(e) => setBudgetInput(c.categoryId, e.target.value)}
+                            placeholder="€"
+                            aria-label={`Assign budget for ${c.name}`}
+                            style={{ width: 110 }}
+                          />
+                          <button type="submit">Assign</button>
+                        </form>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
