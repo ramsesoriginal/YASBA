@@ -12,6 +12,8 @@ The app stores immutable `DomainRecord` items such as:
 - `BudgetAssigned` (monthKey, categoryId, amountCents)
 - `TransactionVoided` (transactionId)
 - `TransactionCorrected` (transactionId, replacement payload)
+- `CategoryRenamed` (categoryId, name)
+- `CategoryArchived` (categoryId, archived)
 
 To render a month, the UI:
 1) loads all records from IndexedDB
@@ -55,6 +57,18 @@ Transactions are append-only. To derive the effective transaction stream:
 
 Ordering / “latest” is determined by the global deterministic ordering rule (ADR-0004).
 Semantics are defined in ADR-0005.
+
+## Effective category resolution
+
+For a given `categoryId`:
+
+- Base name comes from `CategoryCreated`.
+- If one or more `CategoryRenamed` records exist, the effective name is the latest rename.
+- If one or more `CategoryArchived` records exist, the effective archived state is the latest archived flag.
+
+“Latest” is determined by the global deterministic ordering rules (ADR-0004).
+Archived categories are hidden by default in UI pickers, but remain resolvable for history.
+
 
 ## References
 

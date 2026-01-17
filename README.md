@@ -91,6 +91,11 @@ Phase 0 (repo scaffolding, CI, tooling, docs baseline) is complete and tagged as
   - **transaction list for the selected month**
   - **void a transaction** (append-only “delete”)
   - **edit a transaction** via append-only corrections (amount/date/category/payee/memo)
+  - Category management:
+    - rename categories (append-only)
+    - archive/unarchive categories (append-only)
+    - archived categories are hidden from category pickers by default
+    - archived categories remain resolvable for historical transactions and reports
 
 
 ### What is explicitly out of scope (Phase 1)
@@ -122,6 +127,16 @@ YASBA never mutates existing transactions. Fixing mistakes appends new records:
 Resolution rules:
 - **Void wins** over corrections
 - If multiple corrections exist, the **latest correction wins** deterministically (see ADR-0005)
+
+### Category lifecycle semantics (append-only)
+
+Categories are never mutated in-place. Changes are stored as additional records:
+
+- `CategoryRenamed` — updates the effective display name (latest wins deterministically)
+- `CategoryArchived` — hides categories from day-to-day pickers/lists by default (latest state wins)
+
+Archived categories are preserved so historical transactions and future reports remain consistent.
+
 
 ---
 
