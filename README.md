@@ -72,24 +72,26 @@ Phase 0 (repo scaffolding, CI, tooling, docs baseline) is complete and tagged as
 
 - ✅ Slice 1 — Minimal usable month (categories + income/expense + deterministic balances + IndexedDB)
 - ✅ Slice 2 — Budget assignment + rollover + plan future months
-- ⏭️ Slice 3 — Transaction workflow polish (append-only edits/corrections)
-- Slice 4 — Category management (subcategories, rename, archive, ordering)
+- ✅ Slice 3 — Transaction workflow polish (append-only edits/corrections)
+- ⏭️ Slice 4 — Category management (subcategories, rename, archive, ordering)
 - Slice 5 — Reports (spending per category/month)
 - Slice 6 — Import/Export JSON
 - Slice 7 — MVP hardening (a11y, UX polish, docs, release v0.2.0)
 
-### What works right now (Slice 2)
+### What works right now (Slice 3)
 
-- Offline-only persistence via **IndexedDB** (append-only records)
-- Deterministic month projection from immutable records
-- Minimal Month screen:
+- Offline-only persistence via **IndexedDB** (append-only record log)
+- Deterministic projections from immutable records
+- Month screen:
   - create categories
   - add income (uncategorized inflow → “Ready to Assign”)
   - add expenses (categorized outflows)
-  - **assign budget to categories per month** (Budgeted)
-  - **rollover**: previous month Available carries into the next month
-  - plan future months via the month selector
-  - refresh the page and data persists
+  - assign budgets per category/month
+  - rollover: previous month Available carries forward (supports planning future months)
+  - **transaction list for the selected month**
+  - **void a transaction** (append-only “delete”)
+  - **edit a transaction** via append-only corrections (amount/date/category/payee/memo)
+
 
 ### What is explicitly out of scope (Phase 1)
 
@@ -110,6 +112,16 @@ For a given month + category:
 
 - **Ready to Assign** = uncategorized inflows in the selected month − total Budgeted in the selected month
 
+### Transaction corrections (append-only)
+
+YASBA never mutates existing transactions. Fixing mistakes appends new records:
+
+- **Void** (`TransactionVoided`): logically deletes a transaction (ignored everywhere)
+- **Edit** (`TransactionCorrected`): replaces a transaction’s effective fields
+
+Resolution rules:
+- **Void wins** over corrections
+- If multiple corrections exist, the **latest correction wins** deterministically (see ADR-0005)
 
 ---
 
