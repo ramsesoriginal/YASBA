@@ -14,6 +14,8 @@ The app stores immutable `DomainRecord` items such as:
 - `TransactionCorrected` (transactionId, replacement payload)
 - `CategoryRenamed` (categoryId, name)
 - `CategoryArchived` (categoryId, archived)
+- `CategoryReordered` (orderedCategoryIds snapshot)
+- `CategoryReparented` (categoryId, parentCategoryId?)
 
 To render a month, the UI:
 1) loads all records from IndexedDB
@@ -60,14 +62,17 @@ Semantics are defined in ADR-0005.
 
 ## Effective category resolution
 
-For a given `categoryId`:
+For each `categoryId`:
 
-- Base name comes from `CategoryCreated`.
-- If one or more `CategoryRenamed` records exist, the effective name is the latest rename.
-- If one or more `CategoryArchived` records exist, the effective archived state is the latest archived flag.
+- Base name is from `CategoryCreated`.
+- Effective name is the latest `CategoryRenamed.name` (if any).
+- Effective archive state is the latest `CategoryArchived.archived` (if any).
+- Effective parent is the latest `CategoryReparented.parentCategoryId` (if any); `undefined` means top-level.
+- Effective display order is determined by the latest `CategoryReordered.orderedCategoryIds` snapshot.
+  - Categories not present in the snapshot are appended in a stable fallback order.
 
-“Latest” is determined by the global deterministic ordering rules (ADR-0004).
-Archived categories are hidden by default in UI pickers, but remain resolvable for history.
+“Latest” is defined by the global deterministic ordering rules (ADR-0004).
+Archived categories may be hidden by the UI, but remain resolvable for historical references.
 
 
 ## References

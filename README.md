@@ -73,8 +73,8 @@ Phase 0 (repo scaffolding, CI, tooling, docs baseline) is complete and tagged as
 - ✅ Slice 1 — Minimal usable month (categories + income/expense + deterministic balances + IndexedDB)
 - ✅ Slice 2 — Budget assignment + rollover + plan future months
 - ✅ Slice 3 — Transaction workflow polish (append-only edits/corrections)
-- ⏭️ Slice 4 — Category management (subcategories, rename, archive, ordering)
-- Slice 5 — Reports (spending per category/month)
+- ✅ Slice 4 — Category management (subcategories, rename, archive, ordering)
+- ⏭️ Slice 5 — Reports (spending per category/month)
 - Slice 6 — Import/Export JSON
 - Slice 7 — MVP hardening (a11y, UX polish, docs, release v0.2.0)
 
@@ -91,11 +91,12 @@ Phase 0 (repo scaffolding, CI, tooling, docs baseline) is complete and tagged as
   - **transaction list for the selected month**
   - **void a transaction** (append-only “delete”)
   - **edit a transaction** via append-only corrections (amount/date/category/payee/memo)
-  - Category management:
-    - rename categories (append-only)
-    - archive/unarchive categories (append-only)
-    - archived categories are hidden from category pickers by default
-    - archived categories remain resolvable for historical transactions and reports
+- Category management (append-only, deterministic):
+  - Rename categories
+  - Archive / unarchive categories
+  - Ordering controls (up/down) persisted via reorder snapshots
+  - Subcategories (parent/child hierarchy), shown grouped in the UI
+  - Category pickers show hierarchical labels (e.g. `Groceries › Snacks`)
 
 
 ### What is explicitly out of scope (Phase 1)
@@ -128,14 +129,17 @@ Resolution rules:
 - **Void wins** over corrections
 - If multiple corrections exist, the **latest correction wins** deterministically (see ADR-0005)
 
-### Category lifecycle semantics (append-only)
+### Category lifecycle & hierarchy semantics (append-only)
 
-Categories are never mutated in-place. Changes are stored as additional records:
+Categories are created once and never mutated in-place. Changes are represented as additional records:
 
-- `CategoryRenamed` — updates the effective display name (latest wins deterministically)
-- `CategoryArchived` — hides categories from day-to-day pickers/lists by default (latest state wins)
+- `CategoryRenamed` — effective name is the latest rename (deterministic)
+- `CategoryArchived` — effective archive state is the latest flag; archived categories are hidden by default in pickers/lists
+- `CategoryReordered` — latest snapshot defines display order (partial snapshots append remaining categories in a stable fallback order)
+- `CategoryReparented` — latest parent assignment defines hierarchy; `undefined` means top-level
 
-Archived categories are preserved so historical transactions and future reports remain consistent.
+Archived categories remain resolvable by ID so historical transactions and reports stay consistent.
+
 
 
 ---
