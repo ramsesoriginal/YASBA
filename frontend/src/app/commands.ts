@@ -6,6 +6,8 @@ import type {
   IsoDateTime,
   BudgetAssigned,
   MonthKey,
+  TransactionVoided,
+  TransactionCorrected,
 } from "../domain/types";
 
 function nowIso(): IsoDateTime {
@@ -91,5 +93,45 @@ export function cmdAssignBudget(params: {
     monthKey: params.monthKey,
     categoryId: params.categoryId,
     amountCents: params.amountCents,
+  };
+}
+
+export function cmdVoidTransaction(transactionId: string): TransactionVoided {
+  const trimmed = transactionId.trim();
+  if (!trimmed) throw new Error("transactionId is required");
+
+  return {
+    type: "TransactionVoided",
+    id: newId(),
+    createdAt: nowIso(),
+    transactionId: trimmed,
+  };
+}
+
+export function cmdCorrectTransaction(params: {
+  transactionId: string;
+  occurredAt: IsoDateTime;
+  amountCents: MoneyCents;
+  categoryId?: string;
+  payee?: string;
+  memo?: string;
+}): TransactionCorrected {
+  const transactionId = params.transactionId.trim();
+  if (!transactionId) throw new Error("transactionId is required");
+  if (!params.occurredAt) throw new Error("occurredAt is required");
+  if (!Number.isInteger(params.amountCents)) throw new Error("amountCents must be integer cents");
+
+  return {
+    type: "TransactionCorrected",
+    id: newId(),
+    createdAt: nowIso(),
+    transactionId,
+    replacement: {
+      occurredAt: params.occurredAt,
+      amountCents: params.amountCents,
+      categoryId: params.categoryId,
+      payee: params.payee?.trim() ? params.payee.trim() : undefined,
+      memo: params.memo?.trim() ? params.memo.trim() : undefined,
+    },
   };
 }

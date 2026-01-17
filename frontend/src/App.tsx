@@ -2,9 +2,17 @@ import { useEffect, useMemo, useState } from "react";
 import type { DomainRecord } from "./domain/types";
 import { projectMonth } from "./domain/projectors/projectMonth";
 import { appendRecord, listAllRecords } from "./storage";
-import { cmdAddExpense, cmdAddIncome, cmdCreateCategory, cmdAssignBudget } from "./app/commands";
+import {
+  cmdAddExpense,
+  cmdAddIncome,
+  cmdCreateCategory,
+  cmdAssignBudget,
+  cmdVoidTransaction,
+  cmdCorrectTransaction,
+} from "./app/commands";
 import { currentMonthKey, isoFromDateInput, todayIsoDate } from "./app/month";
 import { formatCents } from "./app/moneyFormat";
+import { listMonthTransactions } from "./domain/views/monthTransactions";
 
 type UiError = { message: string };
 
@@ -24,6 +32,17 @@ export default function App() {
   const [expensePayee, setExpensePayee] = useState("");
   const [budgetInputs, setBudgetInputs] = useState<Record<string, string>>({});
 
+  type EditDraft = {
+    occurredDate: string; // YYYY-MM-DD
+    amount: string; // euros string
+    categoryId: string; // "" means Ready to Assign
+    payee: string;
+    memo: string;
+  };
+
+  const [editingTxId, setEditingTxId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<EditDraft | null>(null);
+
   useEffect(() => {
     (async () => {
       try {
@@ -39,12 +58,33 @@ export default function App() {
 
   const snapshot = useMemo(() => projectMonth(records, monthKey), [records, monthKey]);
 
+  const categoryNameById = useMemo(() => {
+    const map = new Map<string, string>();
+
+    // Deterministic enough for now: last CategoryCreated in record order wins.
+    // (Edits/renames come later as explicit records.)
+    for (const r of records) {
+      if (r.type === "CategoryCreated") {
+        map.set(r.categoryId, r.name);
+      }
+    }
+
+    return map;
+  }, [records]);
+
+  const monthTx = useMemo(() => listMonthTransactions(records, monthKey), [records, monthKey]);
+
   // Default expense category selection to first available
   useEffect(() => {
     if (!expenseCategoryId && snapshot.categories.length > 0) {
       setExpenseCategoryId(snapshot.categories[0].categoryId);
     }
   }, [expenseCategoryId, snapshot.categories]);
+
+  const categoryOptions = useMemo(
+    () => snapshot.categories.map((c) => ({ id: c.categoryId, name: c.name })),
+    [snapshot.categories]
+  );
 
   async function handleAppend(record: DomainRecord) {
     setErr(null);
@@ -64,6 +104,14 @@ export default function App() {
     return Math.round(n * 100);
   }
 
+  function centsToEurosString(cents: number): string {
+    const sign = cents < 0 ? "-" : "";
+    const abs = Math.abs(cents);
+    const euros = Math.floor(abs / 100);
+    const rem = abs % 100;
+    return `${sign}${euros}.${String(rem).padStart(2, "0")}`;
+  }
+
   function getBudgetInput(categoryId: string): string {
     return budgetInputs[categoryId] ?? "";
   }
@@ -72,6 +120,29 @@ export default function App() {
   }
 
   if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
+
+  function startEdit(t: {
+    occurredAt: string;
+    amountCents: number;
+    categoryId?: string;
+    payee?: string;
+    memo?: string;
+    transactionId: string;
+  }) {
+    setEditingTxId(t.transactionId);
+    setEditDraft({
+      occurredDate: t.occurredAt.slice(0, 10),
+      amount: centsToEurosString(t.amountCents),
+      categoryId: t.categoryId ?? "",
+      payee: t.payee ?? "",
+      memo: t.memo ?? "",
+    });
+  }
+
+  function cancelEdit() {
+    setEditingTxId(null);
+    setEditDraft(null);
+  }
 
   return (
     <div
@@ -343,6 +414,241 @@ export default function App() {
               Add expense
             </button>
           </form>
+        </section>
+
+        <section style={{ padding: 12, border: "1px solid #ddd", borderRadius: 8 }}>
+          <h2 style={{ marginTop: 0 }}>Transactions</h2>
+
+          {monthTx.length === 0 ? (
+            <p style={{ opacity: 0.8 }}>No transactions in this month yet.</p>
+          ) : (
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th
+                    style={{
+                      textAlign: "left",
+                      borderBottom: "1px solid #eee",
+                      padding: "8px 4px",
+                    }}>
+                    Date
+                  </th>
+                  <th
+                    style={{
+                      textAlign: "left",
+                      borderBottom: "1px solid #eee",
+                      padding: "8px 4px",
+                    }}>
+                    Payee / Memo
+                  </th>
+                  <th
+                    style={{
+                      textAlign: "left",
+                      borderBottom: "1px solid #eee",
+                      padding: "8px 4px",
+                    }}>
+                    Category
+                  </th>
+                  <th
+                    style={{
+                      textAlign: "right",
+                      borderBottom: "1px solid #eee",
+                      padding: "8px 4px",
+                    }}>
+                    Amount
+                  </th>
+                  <th
+                    style={{
+                      textAlign: "right",
+                      borderBottom: "1px solid #eee",
+                      padding: "8px 4px",
+                    }}>
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthTx.map((t) => {
+                  const categoryName = t.categoryId
+                    ? (categoryNameById.get(t.categoryId) ?? "(unknown category)")
+                    : "Ready to Assign";
+                  const payeeMemo = t.payee?.trim()
+                    ? t.memo?.trim()
+                      ? `${t.payee} — ${t.memo}`
+                      : t.payee
+                    : t.memo?.trim()
+                      ? t.memo
+                      : "";
+
+                  return (
+                    <>
+                      <tr key={t.transactionId}>
+                        <td
+                          style={{
+                            padding: "8px 4px",
+                            borderBottom: "1px solid #f3f3f3",
+                            whiteSpace: "nowrap",
+                          }}>
+                          {t.occurredAt.slice(0, 10)}
+                        </td>
+                        <td style={{ padding: "8px 4px", borderBottom: "1px solid #f3f3f3" }}>
+                          {payeeMemo || <span style={{ opacity: 0.6 }}>(no details)</span>}
+                        </td>
+                        <td style={{ padding: "8px 4px", borderBottom: "1px solid #f3f3f3" }}>
+                          {categoryName}
+                        </td>
+                        <td
+                          style={{
+                            padding: "8px 4px",
+                            borderBottom: "1px solid #f3f3f3",
+                            textAlign: "right",
+                          }}>
+                          {formatCents(t.amountCents)}
+                        </td>
+                        <td
+                          style={{
+                            padding: "8px 4px",
+                            borderBottom: "1px solid #f3f3f3",
+                            textAlign: "right",
+                            whiteSpace: "nowrap",
+                          }}>
+                          <button
+                            type="button"
+                            onClick={() => startEdit(t)}
+                            style={{ marginRight: 8 }}>
+                            Edit
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const ok = window.confirm(
+                                "Void this transaction? This cannot be undone (yet)."
+                              );
+                              if (!ok) return;
+                              try {
+                                const r = cmdVoidTransaction(t.transactionId);
+                                void handleAppend(r);
+                              } catch (e) {
+                                setErr({
+                                  message:
+                                    e instanceof Error ? e.message : "Failed to void transaction",
+                                });
+                              }
+                            }}>
+                            Void
+                          </button>
+                        </td>
+                      </tr>
+                      {editingTxId === t.transactionId && editDraft && (
+                        <tr key={`${t.transactionId}-edit`}>
+                          <td
+                            colSpan={5}
+                            style={{ padding: "8px 4px", borderBottom: "1px solid #f3f3f3" }}>
+                            <form
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                try {
+                                  const occurredAt = `${editDraft.occurredDate}T12:00:00.000Z`;
+                                  const amountCents = eurosToCents(editDraft.amount);
+                                  const categoryId = editDraft.categoryId || undefined;
+
+                                  const r = cmdCorrectTransaction({
+                                    transactionId: t.transactionId,
+                                    occurredAt,
+                                    amountCents,
+                                    categoryId,
+                                    payee: editDraft.payee,
+                                    memo: editDraft.memo,
+                                  });
+
+                                  void handleAppend(r);
+                                  cancelEdit();
+                                } catch (e2) {
+                                  setErr({
+                                    message:
+                                      e2 instanceof Error ? e2.message : "Invalid edit values",
+                                  });
+                                }
+                              }}
+                              style={{
+                                display: "grid",
+                                gridTemplateColumns: "140px 140px 1fr 1fr auto",
+                                gap: 8,
+                                alignItems: "center",
+                              }}>
+                              <input
+                                type="date"
+                                value={editDraft.occurredDate}
+                                onChange={(e) =>
+                                  setEditDraft({ ...editDraft, occurredDate: e.target.value })
+                                }
+                                aria-label="Transaction date"
+                              />
+
+                              <input
+                                value={editDraft.amount}
+                                onChange={(e) =>
+                                  setEditDraft({ ...editDraft, amount: e.target.value })
+                                }
+                                aria-label="Transaction amount"
+                                placeholder="e.g. -10.00"
+                              />
+
+                              <select
+                                value={editDraft.categoryId}
+                                onChange={(e) =>
+                                  setEditDraft({ ...editDraft, categoryId: e.target.value })
+                                }
+                                aria-label="Transaction category">
+                                <option value="">Ready to Assign</option>
+                                {categoryOptions.map((c) => (
+                                  <option key={c.id} value={c.id}>
+                                    {c.name}
+                                  </option>
+                                ))}
+                              </select>
+
+                              <input
+                                value={editDraft.payee}
+                                onChange={(e) =>
+                                  setEditDraft({ ...editDraft, payee: e.target.value })
+                                }
+                                aria-label="Payee"
+                                placeholder="Payee"
+                              />
+
+                              <input
+                                value={editDraft.memo}
+                                onChange={(e) =>
+                                  setEditDraft({ ...editDraft, memo: e.target.value })
+                                }
+                                aria-label="Memo"
+                                placeholder="Memo"
+                              />
+
+                              <div
+                                style={{
+                                  gridColumn: "1 / -1",
+                                  display: "flex",
+                                  gap: 8,
+                                  justifyContent: "flex-end",
+                                }}>
+                                <button type="submit">Save</button>
+                                <button type="button" onClick={cancelEdit}>
+                                  Cancel
+                                </button>
+                              </div>
+                            </form>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </section>
       </main>
 

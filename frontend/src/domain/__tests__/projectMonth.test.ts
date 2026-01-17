@@ -290,4 +290,245 @@ describe("projectMonth", () => {
     expect(groceries?.activityCents).toBe(0);
     expect(groceries?.availableCents).toBe(40_00);
   });
+
+  it("ignores voided categorized transactions in category activity/available", () => {
+    const records: DomainRecord[] = [
+      {
+        type: "CategoryCreated",
+        id: "r-cat-1",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        categoryId: "cat-groceries",
+        name: "Groceries",
+      },
+      {
+        type: "BudgetAssigned",
+        id: "r-bud-1",
+        createdAt: "2026-01-01T01:00:00.000Z",
+        monthKey: "2026-01",
+        categoryId: "cat-groceries",
+        amountCents: 50_00,
+      },
+      {
+        type: "TransactionCreated",
+        id: "tx-1",
+        createdAt: "2026-01-02T00:00:00.000Z",
+        occurredAt: "2026-01-02T12:00:00.000Z",
+        amountCents: -10_00,
+        categoryId: "cat-groceries",
+      },
+      {
+        type: "TransactionVoided",
+        id: "void-1",
+        createdAt: "2026-01-02T00:00:01.000Z",
+        transactionId: "tx-1",
+      },
+    ];
+
+    const snap = projectMonth(records, "2026-01");
+    const groceries = snap.categories.find((c) => c.categoryId === "cat-groceries");
+
+    // Expense is voided => activity unaffected
+    expect(groceries?.budgetedCents).toBe(50_00);
+    expect(groceries?.activityCents).toBe(0);
+    expect(groceries?.availableCents).toBe(50_00);
+  });
+
+  it("ignores voided uncategorized inflows in ready-to-assign", () => {
+    const records: DomainRecord[] = [
+      {
+        type: "TransactionCreated",
+        id: "tx-income",
+        createdAt: "2026-01-05T00:00:00.000Z",
+        occurredAt: "2026-01-05T12:00:00.000Z",
+        amountCents: 100_00,
+      },
+      {
+        type: "TransactionVoided",
+        id: "void-income",
+        createdAt: "2026-01-05T12:01:00.000Z",
+        transactionId: "tx-income",
+      },
+    ];
+
+    const snap = projectMonth(records, "2026-01");
+    expect(snap.readyToAssignCents).toBe(0);
+  });
+
+  it("applies TransactionCorrected to category activity/available (original tx ignored)", () => {
+    const records: DomainRecord[] = [
+      {
+        type: "CategoryCreated",
+        id: "r-cat-1",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        categoryId: "cat-groceries",
+        name: "Groceries",
+      },
+      {
+        type: "BudgetAssigned",
+        id: "r-bud-1",
+        createdAt: "2026-01-01T01:00:00.000Z",
+        monthKey: "2026-01",
+        categoryId: "cat-groceries",
+        amountCents: 50_00,
+      },
+      {
+        type: "TransactionCreated",
+        id: "tx-1",
+        createdAt: "2026-01-02T00:00:00.000Z",
+        occurredAt: "2026-01-02T12:00:00.000Z",
+        amountCents: -10_00,
+        categoryId: "cat-groceries",
+        payee: "Rewe",
+      },
+      {
+        type: "TransactionCorrected",
+        id: "corr-1",
+        createdAt: "2026-01-02T12:01:00.000Z",
+        transactionId: "tx-1",
+        replacement: {
+          occurredAt: "2026-01-02T12:00:00.000Z",
+          amountCents: -12_00,
+          categoryId: "cat-groceries",
+          payee: "Rewe",
+          memo: "corrected amount",
+        },
+      },
+    ];
+
+    const snap = projectMonth(records, "2026-01");
+    const groceries = snap.categories.find((c) => c.categoryId === "cat-groceries");
+
+    // corrected expense is applied
+    expect(groceries?.activityCents).toBe(-12_00);
+    expect(groceries?.availableCents).toBe(50_00 - 12_00);
+  });
+
+  it("latest correction wins deterministically", () => {
+    const records: DomainRecord[] = [
+      {
+        type: "CategoryCreated",
+        id: "r-cat-1",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        categoryId: "cat-groceries",
+        name: "Groceries",
+      },
+      {
+        type: "TransactionCreated",
+        id: "tx-1",
+        createdAt: "2026-01-02T00:00:00.000Z",
+        occurredAt: "2026-01-02T12:00:00.000Z",
+        amountCents: -10_00,
+        categoryId: "cat-groceries",
+      },
+      {
+        type: "TransactionCorrected",
+        id: "corr-older",
+        createdAt: "2026-01-02T12:01:00.000Z",
+        transactionId: "tx-1",
+        replacement: {
+          occurredAt: "2026-01-02T12:00:00.000Z",
+          amountCents: -11_00,
+          categoryId: "cat-groceries",
+        },
+      },
+      {
+        type: "TransactionCorrected",
+        id: "corr-newer",
+        createdAt: "2026-01-02T12:02:00.000Z",
+        transactionId: "tx-1",
+        replacement: {
+          occurredAt: "2026-01-02T12:00:00.000Z",
+          amountCents: -13_00,
+          categoryId: "cat-groceries",
+        },
+      },
+    ];
+
+    const snap = projectMonth(records, "2026-01");
+    const groceries = snap.categories.find((c) => c.categoryId === "cat-groceries");
+    expect(groceries?.activityCents).toBe(-13_00);
+  });
+
+  it("correction can move a transaction across months via occurredAt", () => {
+    const records: DomainRecord[] = [
+      {
+        type: "CategoryCreated",
+        id: "r-cat-1",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        categoryId: "cat-groceries",
+        name: "Groceries",
+      },
+      {
+        type: "TransactionCreated",
+        id: "tx-1",
+        createdAt: "2026-01-31T10:00:00.000Z",
+        occurredAt: "2026-01-31T09:00:00.000Z",
+        amountCents: -10_00,
+        categoryId: "cat-groceries",
+      },
+      {
+        type: "TransactionCorrected",
+        id: "corr-1",
+        createdAt: "2026-01-31T10:01:00.000Z",
+        transactionId: "tx-1",
+        replacement: {
+          occurredAt: "2026-02-01T09:00:00.000Z",
+          amountCents: -10_00,
+          categoryId: "cat-groceries",
+        },
+      },
+    ];
+
+    const jan = projectMonth(records, "2026-01");
+    const feb = projectMonth(records, "2026-02");
+
+    const janGroceries = jan.categories.find((c) => c.categoryId === "cat-groceries");
+    const febGroceries = feb.categories.find((c) => c.categoryId === "cat-groceries");
+
+    // moved out of January
+    expect(janGroceries?.activityCents ?? 0).toBe(0);
+    // moved into February
+    expect(febGroceries?.activityCents).toBe(-10_00);
+  });
+
+  it("void wins over correction (voided tx is ignored)", () => {
+    const records: DomainRecord[] = [
+      {
+        type: "CategoryCreated",
+        id: "r-cat-1",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        categoryId: "cat-groceries",
+        name: "Groceries",
+      },
+      {
+        type: "TransactionCreated",
+        id: "tx-1",
+        createdAt: "2026-01-02T00:00:00.000Z",
+        occurredAt: "2026-01-02T12:00:00.000Z",
+        amountCents: -10_00,
+        categoryId: "cat-groceries",
+      },
+      {
+        type: "TransactionCorrected",
+        id: "corr-1",
+        createdAt: "2026-01-02T12:01:00.000Z",
+        transactionId: "tx-1",
+        replacement: {
+          occurredAt: "2026-01-02T12:00:00.000Z",
+          amountCents: -999_00,
+          categoryId: "cat-groceries",
+        },
+      },
+      {
+        type: "TransactionVoided",
+        id: "void-1",
+        createdAt: "2026-01-02T12:02:00.000Z",
+        transactionId: "tx-1",
+      },
+    ];
+
+    const snap = projectMonth(records, "2026-01");
+    const groceries = snap.categories.find((c) => c.categoryId === "cat-groceries");
+    expect(groceries?.activityCents).toBe(0);
+  });
 });

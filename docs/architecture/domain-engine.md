@@ -10,6 +10,8 @@ The app stores immutable `DomainRecord` items such as:
 - `CategoryCreated`
 - `TransactionCreated`
 - `BudgetAssigned` (monthKey, categoryId, amountCents)
+- `TransactionVoided` (transactionId)
+- `TransactionCorrected` (transactionId, replacement payload)
 
 To render a month, the UI:
 1) loads all records from IndexedDB
@@ -42,6 +44,17 @@ For each month + category:
 For the month:
 
 - `readyToAssignCents` = sum(uncategorized inflow transactions in month) − sum(all BudgetAssigned in month)
+
+## Effective transaction resolution
+
+Transactions are append-only. To derive the effective transaction stream:
+
+1) If a transaction has a `TransactionVoided`, it is ignored.
+2) Else if it has one or more `TransactionCorrected`, the latest correction wins.
+3) Else the original `TransactionCreated` is applied.
+
+Ordering / “latest” is determined by the global deterministic ordering rule (ADR-0004).
+Semantics are defined in ADR-0005.
 
 ## References
 

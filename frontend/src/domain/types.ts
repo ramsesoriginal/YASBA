@@ -9,7 +9,12 @@ export type MonthKey = string;
 
 export type MoneyCents = number;
 
-export type DomainRecord = CategoryCreated | TransactionCreated | BudgetAssigned;
+export type DomainRecord =
+  | CategoryCreated
+  | TransactionCreated
+  | BudgetAssigned
+  | TransactionVoided
+  | TransactionCorrected;
 
 export type CategoryCreated = {
   type: "CategoryCreated";
@@ -50,4 +55,27 @@ export type BudgetAssigned = {
 
   // positive to assign, negative to unassign
   amountCents: MoneyCents;
+};
+
+export type TransactionVoided = {
+  type: "TransactionVoided";
+  id: RecordId;
+  createdAt: IsoDateTime;
+
+  transactionId: RecordId; // references TransactionCreated.id
+};
+
+export type TransactionCorrected = {
+  type: "TransactionCorrected";
+  id: RecordId;
+  createdAt: IsoDateTime;
+
+  transactionId: RecordId; // references TransactionCreated.id
+  replacement: {
+    occurredAt: IsoDateTime;
+    amountCents: MoneyCents;
+    categoryId?: CategoryId;
+    payee?: string;
+    memo?: string;
+  };
 };
