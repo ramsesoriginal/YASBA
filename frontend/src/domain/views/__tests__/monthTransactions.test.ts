@@ -91,4 +91,36 @@ describe("listMonthTransactions", () => {
     // occurredAt 2026-01-10: b then a (createdAt desc)
     expect(ids).toEqual(["z", "y", "later", "b", "a"]);
   });
+
+  it("excludes voided transactions from the month list", () => {
+    const records: DomainRecord[] = [
+      {
+        type: "TransactionCreated",
+        id: "tx-1",
+        createdAt: "2026-01-02T00:00:00.000Z",
+        occurredAt: "2026-01-02T12:00:00.000Z",
+        amountCents: -10_00,
+        categoryId: "cat-a",
+      },
+      {
+        type: "TransactionCreated",
+        id: "tx-2",
+        createdAt: "2026-01-03T00:00:00.000Z",
+        occurredAt: "2026-01-03T12:00:00.000Z",
+        amountCents: -20_00,
+        categoryId: "cat-a",
+      },
+      {
+        type: "TransactionVoided",
+        id: "void-2",
+        createdAt: "2026-01-03T12:01:00.000Z",
+        transactionId: "tx-2",
+      },
+    ];
+
+    const jan = listMonthTransactions(records, "2026-01");
+    const ids = jan.map((t) => t.transactionId);
+
+    expect(ids).toEqual(["tx-1"]);
+  });
 });
