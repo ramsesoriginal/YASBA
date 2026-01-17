@@ -6,6 +6,7 @@ import type {
   IsoDateTime,
   BudgetAssigned,
   MonthKey,
+  TransactionVoided,
 } from "../domain/types";
 
 function nowIso(): IsoDateTime {
@@ -91,5 +92,17 @@ export function cmdAssignBudget(params: {
     monthKey: params.monthKey,
     categoryId: params.categoryId,
     amountCents: params.amountCents,
+  };
+}
+
+export function cmdVoidTransaction(transactionId: string): TransactionVoided {
+  const trimmed = transactionId.trim();
+  if (!trimmed) throw new Error("transactionId is required");
+
+  return {
+    type: "TransactionVoided",
+    id: newId(),
+    createdAt: nowIso(),
+    transactionId: trimmed,
   };
 }

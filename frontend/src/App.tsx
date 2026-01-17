@@ -2,7 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import type { DomainRecord } from "./domain/types";
 import { projectMonth } from "./domain/projectors/projectMonth";
 import { appendRecord, listAllRecords } from "./storage";
-import { cmdAddExpense, cmdAddIncome, cmdCreateCategory, cmdAssignBudget } from "./app/commands";
+import {
+  cmdAddExpense,
+  cmdAddIncome,
+  cmdCreateCategory,
+  cmdAssignBudget,
+  cmdVoidTransaction,
+} from "./app/commands";
 import { currentMonthKey, isoFromDateInput, todayIsoDate } from "./app/month";
 import { formatCents } from "./app/moneyFormat";
 import { listMonthTransactions } from "./domain/views/monthTransactions";
@@ -403,6 +409,14 @@ export default function App() {
                     }}>
                     Amount
                   </th>
+                  <th
+                    style={{
+                      textAlign: "right",
+                      borderBottom: "1px solid #eee",
+                      padding: "8px 4px",
+                    }}>
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -441,6 +455,32 @@ export default function App() {
                           textAlign: "right",
                         }}>
                         {formatCents(t.amountCents)}
+                      </td>
+                      <td
+                        style={{
+                          padding: "8px 4px",
+                          borderBottom: "1px solid #f3f3f3",
+                          textAlign: "right",
+                        }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const ok = window.confirm(
+                              "Void this transaction? This cannot be undone (yet)."
+                            );
+                            if (!ok) return;
+                            try {
+                              const r = cmdVoidTransaction(t.transactionId);
+                              void handleAppend(r);
+                            } catch (e) {
+                              setErr({
+                                message:
+                                  e instanceof Error ? e.message : "Failed to void transaction",
+                              });
+                            }
+                          }}>
+                          Void
+                        </button>
                       </td>
                     </tr>
                   );
