@@ -4,6 +4,7 @@ export type CategoryView = {
   categoryId: CategoryId;
   name: string;
   archived: boolean;
+  parentCategoryId?: CategoryId;
 };
 
 type SortKey = { createdAt: IsoDateTime; id: string };
@@ -27,6 +28,8 @@ export function listCategories(records: readonly DomainRecord[]): CategoryView[]
   const created = new Map<CategoryId, { name: string }>();
   const rename = new Map<CategoryId, { key: SortKey; name: string }>();
   const archive = new Map<CategoryId, { key: SortKey; archived: boolean }>();
+  const parent = new Map<CategoryId, { key: SortKey; parentCategoryId?: CategoryId }>();
+
   let latestOrder: { key: SortKey; orderedCategoryIds: string[] } | null = null;
 
   for (const r of records) {
@@ -57,13 +60,24 @@ export function listCategories(records: readonly DomainRecord[]): CategoryView[]
       if (!latestOrder || compareSortKey(latestOrder.key, next.key) < 0) latestOrder = next;
       continue;
     }
+
+    if (r.type === "CategoryReparented") {
+      const next = {
+        key: { createdAt: r.createdAt, id: r.id },
+        parentCategoryId: r.parentCategoryId,
+      };
+      const prev = parent.get(r.categoryId);
+      if (!prev || compareSortKey(prev.key, next.key) < 0) parent.set(r.categoryId, next);
+      continue;
+    }
   }
 
   const out: CategoryView[] = [];
   for (const [categoryId, c] of created.entries()) {
     const name = rename.get(categoryId)?.name ?? c.name;
     const archived = archive.get(categoryId)?.archived ?? false;
-    out.push({ categoryId, name, archived });
+    const parentCategoryId = parent.get(categoryId)?.parentCategoryId;
+    out.push({ categoryId, name, archived, parentCategoryId });
   }
 
   if (latestOrder) {

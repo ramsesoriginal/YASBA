@@ -17,7 +17,8 @@ export type DomainRecord =
   | TransactionCreated
   | BudgetAssigned
   | TransactionVoided
-  | TransactionCorrected;
+  | TransactionCorrected
+  | CategoryReparented;
 
 export type CategoryCreated = {
   type: "CategoryCreated";
@@ -107,4 +108,13 @@ export type CategoryReordered = {
   createdAt: IsoDateTime;
 
   orderedCategoryIds: CategoryId[];
+};
+
+export type CategoryReparented = {
+  type: "CategoryReparented";
+  id: RecordId;
+  createdAt: IsoDateTime;
+
+  categoryId: CategoryId;
+  parentCategoryId?: CategoryId; // undefined = top-level
 };
