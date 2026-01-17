@@ -12,6 +12,7 @@ import {
   cmdRenameCategory,
   cmdArchiveCategory,
   cmdReorderCategories,
+  cmdReparentCategory,
 } from "./app/commands";
 import { currentMonthKey, isoFromDateInput, todayIsoDate } from "./app/month";
 import { formatCents } from "./app/moneyFormat";
@@ -38,6 +39,9 @@ export default function App() {
 
   const [showArchivedCategories, setShowArchivedCategories] = useState(false);
   const [renameDrafts, setRenameDrafts] = useState<Record<string, string>>({});
+
+  const [newSubcatParentId, setNewSubcatParentId] = useState<string | null>(null);
+  const [newSubcatName, setNewSubcatName] = useState("");
 
   type EditDraft = {
     occurredDate: string; // YYYY-MM-DD
@@ -78,6 +82,18 @@ export default function App() {
     return map;
   }, [categoriesView]);
 
+  const categoryLabelById = useMemo(() => {
+    const byId = new Map(categoriesView.map((c) => [c.categoryId, c]));
+    const label = new Map<string, string>();
+
+    for (const c of categoriesView) {
+      const parent = c.parentCategoryId ? byId.get(c.parentCategoryId) : undefined;
+      const text = parent ? `${parent.name} › ${c.name}` : c.name;
+      label.set(c.categoryId, text);
+    }
+    return label;
+  }, [categoriesView]);
+
   const monthTx = useMemo(() => listMonthTransactions(records, monthKey), [records, monthKey]);
 
   // Default expense category selection to first available
@@ -107,6 +123,74 @@ export default function App() {
       })
       .filter((r) => showArchivedCategories || !r.archived);
   }, [snapshot.categories, categoriesView, showArchivedCategories]);
+
+  type UiCatRow = {
+    categoryId: string;
+    name: string;
+    archived: boolean;
+    parentCategoryId?: string;
+    budgetedCents: number;
+    activityCents: number;
+    availableCents: number;
+    depth: 0 | 1;
+  };
+
+  const groupedMonthCategoryRows = useMemo(() => {
+    // Join amounts (snapshot) with category meta
+    const metaById = new Map(categoriesView.map((c) => [c.categoryId, c]));
+
+    const joined = monthCategoryRows
+      .map((s) => {
+        const meta = metaById.get(s.categoryId);
+        return {
+          categoryId: s.categoryId,
+          name: meta?.name ?? s.name,
+          archived: meta?.archived ?? false,
+          parentCategoryId: meta?.parentCategoryId,
+          budgetedCents: s.budgetedCents,
+          activityCents: s.activityCents,
+          availableCents: s.availableCents,
+        };
+      })
+      .filter((r) => showArchivedCategories || !r.archived);
+
+    const parents = joined.filter((c) => !c.parentCategoryId);
+    const childrenByParent = new Map<string, typeof joined>();
+
+    for (const c of joined) {
+      if (!c.parentCategoryId) continue;
+      const arr = childrenByParent.get(c.parentCategoryId) ?? [];
+      arr.push(c);
+      childrenByParent.set(c.parentCategoryId, arr);
+    }
+
+    // Preserve the existing global order by iterating categoriesView order
+    const orderIndex = new Map<string, number>();
+    categoriesView.forEach((c, i) => orderIndex.set(c.categoryId, i));
+    const byGlobalOrder = (a: { categoryId: string }, b: { categoryId: string }) =>
+      (orderIndex.get(a.categoryId) ?? 1e9) - (orderIndex.get(b.categoryId) ?? 1e9);
+
+    parents.sort(byGlobalOrder);
+    for (const [pid, kids] of childrenByParent) {
+      kids.sort(byGlobalOrder);
+      childrenByParent.set(pid, kids);
+    }
+
+    const out: UiCatRow[] = [];
+    for (const p of parents) {
+      out.push({ ...p, depth: 0 });
+      const kids = childrenByParent.get(p.categoryId) ?? [];
+      for (const k of kids) out.push({ ...k, depth: 1 });
+    }
+
+    // Orphans (parent missing/filtered) show as top-level to avoid disappearing
+    const knownIds = new Set(out.map((x) => x.categoryId));
+    const orphans = joined.filter((c) => !knownIds.has(c.categoryId));
+    orphans.sort(byGlobalOrder);
+    for (const o of orphans) out.push({ ...o, depth: 0 });
+
+    return out;
+  }, [categoriesView, monthCategoryRows, showArchivedCategories]);
 
   const categoryOptions = useMemo(
     () => activeCategoriesView.map((c) => ({ id: c.categoryId, name: c.name })),
@@ -151,6 +235,16 @@ export default function App() {
   }
   function setRenameDraft(categoryId: string, value: string) {
     setRenameDrafts((prev) => ({ ...prev, [categoryId]: value }));
+  }
+
+  function beginAddSubcategory(parentCategoryId: string) {
+    setNewSubcatParentId(parentCategoryId);
+    setNewSubcatName("");
+  }
+
+  function cancelAddSubcategory() {
+    setNewSubcatParentId(null);
+    setNewSubcatName("");
   }
 
   if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
@@ -314,7 +408,7 @@ export default function App() {
                 </tr>
               </thead>
               <tbody>
-                {monthCategoryRows.map((c) => {
+                {groupedMonthCategoryRows.map((c) => {
                   const movableIds = showArchivedCategories
                     ? categoriesView.map((x) => x.categoryId)
                     : categoriesView.filter((x) => !x.archived).map((x) => x.categoryId);
@@ -327,7 +421,12 @@ export default function App() {
                     <tr key={c.categoryId}>
                       <td style={{ padding: "8px 4px", borderBottom: "1px solid #f3f3f3" }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                          <div>{c.name}</div>
+                          <div style={{ paddingLeft: c.depth === 1 ? 18 : 0 }}>
+                            {c.depth === 1 ? (
+                              <span style={{ opacity: 0.7, marginRight: 6 }}>↳</span>
+                            ) : null}
+                            {c.name}
+                          </div>
 
                           <form
                             onSubmit={(e) => {
@@ -379,6 +478,62 @@ export default function App() {
                               {c.archived ? "Unarchive" : "Archive"}
                             </button>
                           </form>
+
+                          {c.depth === 0 && (
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: 8,
+                                alignItems: "center",
+                                marginTop: 6,
+                              }}>
+                              {newSubcatParentId === c.categoryId ? (
+                                <>
+                                  <input
+                                    value={newSubcatName}
+                                    onChange={(e) => setNewSubcatName(e.target.value)}
+                                    placeholder="New subcategory name"
+                                    aria-label={`New subcategory under ${c.name}`}
+                                    style={{ width: 220 }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      try {
+                                        const created = cmdCreateCategory(newSubcatName);
+                                        void handleAppend(created);
+
+                                        const reparent = cmdReparentCategory({
+                                          categoryId: created.categoryId,
+                                          parentCategoryId: c.categoryId,
+                                        });
+                                        void handleAppend(reparent);
+
+                                        cancelAddSubcategory();
+                                      } catch (e2) {
+                                        setErr({
+                                          message:
+                                            e2 instanceof Error
+                                              ? e2.message
+                                              : "Failed to create subcategory",
+                                        });
+                                      }
+                                    }}>
+                                    Add
+                                  </button>
+                                  <button type="button" onClick={cancelAddSubcategory}>
+                                    Cancel
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => beginAddSubcategory(c.categoryId)}>
+                                  + Subcategory
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div style={{ display: "inline-flex", gap: 6 }}>
                           <button
@@ -556,7 +711,7 @@ export default function App() {
                 onChange={(e) => setExpenseCategoryId(e.target.value)}>
                 {activeCategoriesView.map((c) => (
                   <option key={c.categoryId} value={c.categoryId}>
-                    {c.name}
+                    {categoryLabelById.get(c.categoryId) ?? c.name}
                   </option>
                 ))}
               </select>

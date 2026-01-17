@@ -11,6 +11,7 @@ import type {
   MonthKey,
   TransactionVoided,
   TransactionCorrected,
+  CategoryReparented,
 } from "../domain/types";
 
 function nowIso(): IsoDateTime {
@@ -180,5 +181,26 @@ export function cmdReorderCategories(orderedCategoryIds: string[]): CategoryReor
     id: newId(),
     createdAt: nowIso(),
     orderedCategoryIds: orderedCategoryIds.map((x) => x.trim()).filter(Boolean),
+  };
+}
+
+export function cmdReparentCategory(params: {
+  categoryId: string;
+  parentCategoryId?: string;
+}): CategoryReparented {
+  const categoryId = params.categoryId.trim();
+  if (!categoryId) throw new Error("categoryId is required");
+
+  const parentCategoryId = params.parentCategoryId?.trim();
+  if (parentCategoryId && parentCategoryId === categoryId) {
+    throw new Error("category cannot be its own parent");
+  }
+
+  return {
+    type: "CategoryReparented",
+    id: newId(),
+    createdAt: nowIso(),
+    categoryId,
+    parentCategoryId: parentCategoryId || undefined,
   };
 }
