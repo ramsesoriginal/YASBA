@@ -13,6 +13,7 @@ export type DomainRecord =
   | CategoryCreated
   | CategoryRenamed
   | CategoryArchived
+  | CategoryReordered
   | TransactionCreated
   | BudgetAssigned
   | TransactionVoided
@@ -98,4 +99,12 @@ export type CategoryArchived = {
 
   categoryId: CategoryId;
   archived: boolean;
+};
+
+export type CategoryReordered = {
+  type: "CategoryReordered";
+  id: RecordId;
+  createdAt: IsoDateTime;
+
+  orderedCategoryIds: CategoryId[];
 };

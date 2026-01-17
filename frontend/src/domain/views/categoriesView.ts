@@ -27,6 +27,7 @@ export function listCategories(records: readonly DomainRecord[]): CategoryView[]
   const created = new Map<CategoryId, { name: string }>();
   const rename = new Map<CategoryId, { key: SortKey; name: string }>();
   const archive = new Map<CategoryId, { key: SortKey; archived: boolean }>();
+  let latestOrder: { key: SortKey; orderedCategoryIds: string[] } | null = null;
 
   for (const r of records) {
     if (r.type === "CategoryCreated") {
@@ -47,6 +48,15 @@ export function listCategories(records: readonly DomainRecord[]): CategoryView[]
       if (!prev || compareSortKey(prev.key, next.key) < 0) archive.set(r.categoryId, next);
       continue;
     }
+
+    if (r.type === "CategoryReordered") {
+      const next = {
+        key: { createdAt: r.createdAt, id: r.id },
+        orderedCategoryIds: r.orderedCategoryIds,
+      };
+      if (!latestOrder || compareSortKey(latestOrder.key, next.key) < 0) latestOrder = next;
+      continue;
+    }
   }
 
   const out: CategoryView[] = [];
@@ -56,6 +66,29 @@ export function listCategories(records: readonly DomainRecord[]): CategoryView[]
     out.push({ categoryId, name, archived });
   }
 
+  if (latestOrder) {
+    const pos = new Map<string, number>();
+    latestOrder.orderedCategoryIds.forEach((id, i) => pos.set(id, i));
+
+    out.sort((a, b) => {
+      const pa = pos.get(a.categoryId);
+      const pb = pos.get(b.categoryId);
+
+      const aIn = pa !== undefined;
+      const bIn = pb !== undefined;
+
+      if (aIn && bIn) return pa! - pb!;
+      if (aIn) return -1;
+      if (bIn) return 1;
+
+      // stable fallback for categories not in snapshot
+      return a.name === b.name ? (a.categoryId < b.categoryId ? -1 : 1) : a.name < b.name ? -1 : 1;
+    });
+
+    return out;
+  }
+
+  // fallback order (existing)
   out.sort((a, b) =>
     a.name === b.name ? (a.categoryId < b.categoryId ? -1 : 1) : a.name < b.name ? -1 : 1
   );
