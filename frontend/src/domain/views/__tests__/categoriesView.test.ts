@@ -294,4 +294,158 @@ describe("listCategories", () => {
     // id "c" is later than "b"
     expect(cats.map((x) => x.categoryId)).toEqual(["cat-c", "cat-b", "cat-a"]);
   });
+
+  it("defaults parentCategoryId to undefined (top-level)", () => {
+    const records: DomainRecord[] = [
+      {
+        type: "CategoryCreated",
+        id: "c1",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        categoryId: "cat-parent",
+        name: "Parent",
+      },
+      {
+        type: "CategoryCreated",
+        id: "c2",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        categoryId: "cat-child",
+        name: "Child",
+      },
+    ];
+
+    const cats = listCategories(records);
+    const parent = cats.find((c) => c.categoryId === "cat-parent");
+    const child = cats.find((c) => c.categoryId === "cat-child");
+
+    expect(parent?.parentCategoryId).toBeUndefined();
+    expect(child?.parentCategoryId).toBeUndefined();
+  });
+
+  it("applies latest CategoryReparented deterministically", () => {
+    const records: DomainRecord[] = [
+      {
+        type: "CategoryCreated",
+        id: "c1",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        categoryId: "cat-a",
+        name: "A",
+      },
+      {
+        type: "CategoryCreated",
+        id: "c2",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        categoryId: "cat-b",
+        name: "B",
+      },
+      {
+        type: "CategoryCreated",
+        id: "c3",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        categoryId: "cat-c",
+        name: "C",
+      },
+
+      {
+        type: "CategoryReparented",
+        id: "p1",
+        createdAt: "2026-01-02T00:00:00.000Z",
+        categoryId: "cat-c",
+        parentCategoryId: "cat-a",
+      },
+      {
+        type: "CategoryReparented",
+        id: "p2",
+        createdAt: "2026-01-03T00:00:00.000Z",
+        categoryId: "cat-c",
+        parentCategoryId: "cat-b",
+      },
+    ];
+
+    const cats = listCategories(records);
+    const c = cats.find((x) => x.categoryId === "cat-c");
+    expect(c?.parentCategoryId).toBe("cat-b");
+  });
+
+  it("breaks parent ties by id deterministically when createdAt collides", () => {
+    const records: DomainRecord[] = [
+      {
+        type: "CategoryCreated",
+        id: "c1",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        categoryId: "cat-a",
+        name: "A",
+      },
+      {
+        type: "CategoryCreated",
+        id: "c2",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        categoryId: "cat-b",
+        name: "B",
+      },
+      {
+        type: "CategoryCreated",
+        id: "c3",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        categoryId: "cat-c",
+        name: "C",
+      },
+
+      {
+        type: "CategoryReparented",
+        id: "b",
+        createdAt: "2026-01-02T00:00:00.000Z",
+        categoryId: "cat-c",
+        parentCategoryId: "cat-a",
+      },
+      {
+        type: "CategoryReparented",
+        id: "c",
+        createdAt: "2026-01-02T00:00:00.000Z",
+        categoryId: "cat-c",
+        parentCategoryId: "cat-b",
+      },
+    ];
+
+    const cats = listCategories(records);
+    const c = cats.find((x) => x.categoryId === "cat-c");
+    expect(c?.parentCategoryId).toBe("cat-b");
+  });
+
+  it("allows moving a category back to top-level (parentCategoryId undefined)", () => {
+    const records: DomainRecord[] = [
+      {
+        type: "CategoryCreated",
+        id: "c1",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        categoryId: "cat-a",
+        name: "A",
+      },
+      {
+        type: "CategoryCreated",
+        id: "c2",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        categoryId: "cat-b",
+        name: "B",
+      },
+
+      {
+        type: "CategoryReparented",
+        id: "p1",
+        createdAt: "2026-01-02T00:00:00.000Z",
+        categoryId: "cat-b",
+        parentCategoryId: "cat-a",
+      },
+      {
+        type: "CategoryReparented",
+        id: "p2",
+        createdAt: "2026-01-03T00:00:00.000Z",
+        categoryId: "cat-b",
+        parentCategoryId: undefined,
+      },
+    ];
+
+    const cats = listCategories(records);
+    const b = cats.find((x) => x.categoryId === "cat-b");
+    expect(b?.parentCategoryId).toBeUndefined();
+  });
 });
