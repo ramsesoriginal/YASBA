@@ -11,6 +11,8 @@ export type MoneyCents = number;
 
 export type DomainRecord =
   | CategoryCreated
+  | CategoryRenamed
+  | CategoryArchived
   | TransactionCreated
   | BudgetAssigned
   | TransactionVoided
@@ -78,4 +80,22 @@ export type TransactionCorrected = {
     payee?: string;
     memo?: string;
   };
+};
+
+export type CategoryRenamed = {
+  type: "CategoryRenamed";
+  id: RecordId;
+  createdAt: IsoDateTime;
+
+  categoryId: CategoryId;
+  name: string;
+};
+
+export type CategoryArchived = {
+  type: "CategoryArchived";
+  id: RecordId;
+  createdAt: IsoDateTime;
+
+  categoryId: CategoryId;
+  archived: boolean;
 };
