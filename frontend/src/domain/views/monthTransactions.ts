@@ -40,9 +40,16 @@ export function listMonthTransactions(
   monthKey: MonthKey
 ): MonthTransaction[] {
   const items: MonthTransaction[] = [];
+  const voidedTxIds = new Set<string>();
+  for (const r of records) {
+    if (r.type === "TransactionVoided") {
+      voidedTxIds.add(r.transactionId);
+    }
+  }
 
   for (const r of records) {
     if (r.type !== "TransactionCreated") continue;
+    if (voidedTxIds.has(r.id)) continue;
     if (monthKeyFromIso(r.occurredAt) !== monthKey) continue;
     items.push(toMonthTransaction(r));
   }

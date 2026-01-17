@@ -103,6 +103,13 @@ function projectMonthBaseFromOrdered(
   let inflowUncategorized: MoneyCents = 0;
   let budgetedTotal: MoneyCents = 0;
 
+  const voidedTxIds = new Set<string>();
+  for (const r of ordered) {
+    if (r.type === "TransactionVoided") {
+      voidedTxIds.add(r.transactionId);
+    }
+  }
+
   for (const r of ordered) {
     if (r.type === "CategoryCreated") {
       const existing = categoriesById.get(r.categoryId);
@@ -127,7 +134,10 @@ function projectMonthBaseFromOrdered(
       continue;
     }
 
-    // TransactionCreated
+    if (r.type !== "TransactionCreated") continue;
+
+    if (voidedTxIds.has(r.id)) continue;
+
     assertMoneyCents(r.amountCents);
     if (monthKeyFromIso(r.occurredAt) !== monthKey) continue;
 
