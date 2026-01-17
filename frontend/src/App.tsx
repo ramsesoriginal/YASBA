@@ -9,10 +9,15 @@ import {
   cmdAssignBudget,
   cmdVoidTransaction,
   cmdCorrectTransaction,
+  cmdRenameCategory,
+  cmdArchiveCategory,
+  cmdReorderCategories,
+  cmdReparentCategory,
 } from "./app/commands";
 import { currentMonthKey, isoFromDateInput, todayIsoDate } from "./app/month";
 import { formatCents } from "./app/moneyFormat";
 import { listMonthTransactions } from "./domain/views/monthTransactions";
+import { listCategories } from "./domain/views/categoriesView";
 
 type UiError = { message: string };
 
@@ -31,6 +36,12 @@ export default function App() {
   const [expenseCategoryId, setExpenseCategoryId] = useState<string>("");
   const [expensePayee, setExpensePayee] = useState("");
   const [budgetInputs, setBudgetInputs] = useState<Record<string, string>>({});
+
+  const [showArchivedCategories, setShowArchivedCategories] = useState(false);
+  const [renameDrafts, setRenameDrafts] = useState<Record<string, string>>({});
+
+  const [newSubcatParentId, setNewSubcatParentId] = useState<string | null>(null);
+  const [newSubcatName, setNewSubcatName] = useState("");
 
   type EditDraft = {
     occurredDate: string; // YYYY-MM-DD
@@ -58,32 +69,132 @@ export default function App() {
 
   const snapshot = useMemo(() => projectMonth(records, monthKey), [records, monthKey]);
 
+  const categoriesView = useMemo(() => listCategories(records), [records]);
+
+  const activeCategoriesView = useMemo(
+    () => categoriesView.filter((c) => !c.archived),
+    [categoriesView]
+  );
+
   const categoryNameById = useMemo(() => {
     const map = new Map<string, string>();
-
-    // Deterministic enough for now: last CategoryCreated in record order wins.
-    // (Edits/renames come later as explicit records.)
-    for (const r of records) {
-      if (r.type === "CategoryCreated") {
-        map.set(r.categoryId, r.name);
-      }
-    }
-
+    for (const c of categoriesView) map.set(c.categoryId, c.name);
     return map;
-  }, [records]);
+  }, [categoriesView]);
+
+  const categoryLabelById = useMemo(() => {
+    const byId = new Map(categoriesView.map((c) => [c.categoryId, c]));
+    const label = new Map<string, string>();
+
+    for (const c of categoriesView) {
+      const parent = c.parentCategoryId ? byId.get(c.parentCategoryId) : undefined;
+      const text = parent ? `${parent.name} › ${c.name}` : c.name;
+      label.set(c.categoryId, text);
+    }
+    return label;
+  }, [categoriesView]);
 
   const monthTx = useMemo(() => listMonthTransactions(records, monthKey), [records, monthKey]);
 
   // Default expense category selection to first available
   useEffect(() => {
-    if (!expenseCategoryId && snapshot.categories.length > 0) {
-      setExpenseCategoryId(snapshot.categories[0].categoryId);
+    if (!expenseCategoryId && activeCategoriesView.length > 0) {
+      setExpenseCategoryId(activeCategoriesView[0].categoryId);
     }
-  }, [expenseCategoryId, snapshot.categories]);
+  }, [expenseCategoryId, activeCategoriesView]);
+
+  const monthCategoryRows = useMemo(() => {
+    const snapById = new Map(snapshot.categories.map((s) => [s.categoryId, s]));
+
+    return categoriesView
+      .map((meta) => {
+        const s = snapById.get(meta.categoryId);
+
+        // if a category exists in the view but isn't in snapshot (should be rare),
+        // fall back to zeroed money fields
+        return {
+          categoryId: meta.categoryId,
+          name: meta.name,
+          archived: meta.archived,
+          budgetedCents: s?.budgetedCents ?? 0,
+          activityCents: s?.activityCents ?? 0,
+          availableCents: s?.availableCents ?? 0,
+        };
+      })
+      .filter((r) => showArchivedCategories || !r.archived);
+  }, [snapshot.categories, categoriesView, showArchivedCategories]);
+
+  type UiCatRow = {
+    categoryId: string;
+    name: string;
+    archived: boolean;
+    parentCategoryId?: string;
+    budgetedCents: number;
+    activityCents: number;
+    availableCents: number;
+    depth: 0 | 1;
+  };
+
+  const groupedMonthCategoryRows = useMemo(() => {
+    // Join amounts (snapshot) with category meta
+    const metaById = new Map(categoriesView.map((c) => [c.categoryId, c]));
+
+    const joined = monthCategoryRows
+      .map((s) => {
+        const meta = metaById.get(s.categoryId);
+        return {
+          categoryId: s.categoryId,
+          name: meta?.name ?? s.name,
+          archived: meta?.archived ?? false,
+          parentCategoryId: meta?.parentCategoryId,
+          budgetedCents: s.budgetedCents,
+          activityCents: s.activityCents,
+          availableCents: s.availableCents,
+        };
+      })
+      .filter((r) => showArchivedCategories || !r.archived);
+
+    const parents = joined.filter((c) => !c.parentCategoryId);
+    const childrenByParent = new Map<string, typeof joined>();
+
+    for (const c of joined) {
+      if (!c.parentCategoryId) continue;
+      const arr = childrenByParent.get(c.parentCategoryId) ?? [];
+      arr.push(c);
+      childrenByParent.set(c.parentCategoryId, arr);
+    }
+
+    // Preserve the existing global order by iterating categoriesView order
+    const orderIndex = new Map<string, number>();
+    categoriesView.forEach((c, i) => orderIndex.set(c.categoryId, i));
+    const byGlobalOrder = (a: { categoryId: string }, b: { categoryId: string }) =>
+      (orderIndex.get(a.categoryId) ?? 1e9) - (orderIndex.get(b.categoryId) ?? 1e9);
+
+    parents.sort(byGlobalOrder);
+    for (const [pid, kids] of childrenByParent) {
+      kids.sort(byGlobalOrder);
+      childrenByParent.set(pid, kids);
+    }
+
+    const out: UiCatRow[] = [];
+    for (const p of parents) {
+      out.push({ ...p, depth: 0 });
+      const kids = childrenByParent.get(p.categoryId) ?? [];
+      for (const k of kids) out.push({ ...k, depth: 1 });
+    }
+
+    // Orphans (parent missing/filtered) show as top-level to avoid disappearing
+    const knownIds = new Set(out.map((x) => x.categoryId));
+    const orphans = joined.filter((c) => !knownIds.has(c.categoryId));
+    orphans.sort(byGlobalOrder);
+    for (const o of orphans) out.push({ ...o, depth: 0 });
+
+    return out;
+  }, [categoriesView, monthCategoryRows, showArchivedCategories]);
 
   const categoryOptions = useMemo(
-    () => snapshot.categories.map((c) => ({ id: c.categoryId, name: c.name })),
-    [snapshot.categories]
+    () => activeCategoriesView.map((c) => ({ id: c.categoryId, name: c.name })),
+    [activeCategoriesView]
   );
 
   async function handleAppend(record: DomainRecord) {
@@ -119,6 +230,23 @@ export default function App() {
     setBudgetInputs((prev) => ({ ...prev, [categoryId]: value }));
   }
 
+  function getRenameDraft(categoryId: string, fallback: string): string {
+    return renameDrafts[categoryId] ?? fallback;
+  }
+  function setRenameDraft(categoryId: string, value: string) {
+    setRenameDrafts((prev) => ({ ...prev, [categoryId]: value }));
+  }
+
+  function beginAddSubcategory(parentCategoryId: string) {
+    setNewSubcatParentId(parentCategoryId);
+    setNewSubcatName("");
+  }
+
+  function cancelAddSubcategory() {
+    setNewSubcatParentId(null);
+    setNewSubcatName("");
+  }
+
   if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
 
   function startEdit(t: {
@@ -142,6 +270,41 @@ export default function App() {
   function cancelEdit() {
     setEditingTxId(null);
     setEditDraft(null);
+  }
+
+  function move<T>(arr: readonly T[], from: number, to: number): T[] {
+    const a = arr.slice();
+    const [item] = a.splice(from, 1);
+    a.splice(to, 0, item);
+    return a;
+  }
+
+  function reorderCategory(categoryId: string, dir: "up" | "down") {
+    // Canonical current order across all categories (already snapshot-resolved)
+    const allIds = categoriesView.map((c) => c.categoryId);
+
+    const activeIds = categoriesView.filter((c) => !c.archived).map((c) => c.categoryId);
+    const archivedIds = categoriesView.filter((c) => c.archived).map((c) => c.categoryId);
+
+    const movableIds = showArchivedCategories ? allIds : activeIds;
+
+    const idx = movableIds.indexOf(categoryId);
+    if (idx === -1) return;
+
+    const nextIdx = dir === "up" ? idx - 1 : idx + 1;
+    if (nextIdx < 0 || nextIdx >= movableIds.length) return;
+
+    const moved = move(movableIds, idx, nextIdx);
+
+    // If archived are hidden, keep them appended in existing order.
+    const nextAll = showArchivedCategories ? moved : [...moved, ...archivedIds];
+
+    try {
+      const r = cmdReorderCategories(nextAll);
+      void handleAppend(r);
+    } catch (e) {
+      setErr({ message: e instanceof Error ? e.message : "Failed to reorder categories" });
+    }
   }
 
   return (
@@ -187,7 +350,16 @@ export default function App() {
         <section style={{ padding: 12, border: "1px solid #ddd", borderRadius: 8 }}>
           <h2 style={{ marginTop: 0 }}>Categories</h2>
 
-          {snapshot.categories.length === 0 ? (
+          <label style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+            <input
+              type="checkbox"
+              checked={showArchivedCategories}
+              onChange={(e) => setShowArchivedCategories(e.target.checked)}
+            />
+            Show archived categories
+          </label>
+
+          {monthCategoryRows.length === 0 ? (
             <p style={{ opacity: 0.8 }}>No categories yet. Add one below.</p>
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -236,67 +408,209 @@ export default function App() {
                 </tr>
               </thead>
               <tbody>
-                {snapshot.categories.map((c) => (
-                  <tr key={c.categoryId}>
-                    <td style={{ padding: "8px 4px", borderBottom: "1px solid #f3f3f3" }}>
-                      {c.name}
-                    </td>
-                    <td
-                      style={{
-                        padding: "8px 4px",
-                        borderBottom: "1px solid #f3f3f3",
-                        textAlign: "right",
-                      }}>
-                      {formatCents(c.budgetedCents)}
-                    </td>
-                    <td
-                      style={{
-                        padding: "8px 4px",
-                        borderBottom: "1px solid #f3f3f3",
-                        textAlign: "right",
-                      }}>
-                      {formatCents(c.activityCents)}
-                    </td>
-                    <td
-                      style={{
-                        padding: "8px 4px",
-                        borderBottom: "1px solid #f3f3f3",
-                        textAlign: "right",
-                      }}>
-                      {formatCents(c.availableCents)}
-                    </td>
-                    <td style={{ padding: "8px 4px", borderBottom: "1px solid #f3f3f3" }}>
-                      <form
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          try {
-                            const cents = eurosToCents(getBudgetInput(c.categoryId));
-                            const r = cmdAssignBudget({
-                              monthKey,
-                              categoryId: c.categoryId,
-                              amountCents: cents,
-                            });
-                            void handleAppend(r);
-                            setBudgetInput(c.categoryId, "");
-                          } catch (e2) {
-                            setErr({
-                              message: e2 instanceof Error ? e2.message : "Invalid budget amount",
-                            });
-                          }
-                        }}
-                        style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <input
-                          value={getBudgetInput(c.categoryId)}
-                          onChange={(e) => setBudgetInput(c.categoryId, e.target.value)}
-                          placeholder="€"
-                          aria-label={`Assign budget for ${c.name}`}
-                          style={{ width: 110 }}
-                        />
-                        <button type="submit">Assign</button>
-                      </form>
-                    </td>
-                  </tr>
-                ))}
+                {groupedMonthCategoryRows.map((c) => {
+                  const movableIds = showArchivedCategories
+                    ? categoriesView.map((x) => x.categoryId)
+                    : categoriesView.filter((x) => !x.archived).map((x) => x.categoryId);
+
+                  const idx = movableIds.indexOf(c.categoryId);
+                  const isFirst = idx <= 0;
+                  const isLast = idx === movableIds.length - 1;
+
+                  return (
+                    <tr key={c.categoryId}>
+                      <td style={{ padding: "8px 4px", borderBottom: "1px solid #f3f3f3" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          <div style={{ paddingLeft: c.depth === 1 ? 18 : 0 }}>
+                            {c.depth === 1 ? (
+                              <span style={{ opacity: 0.7, marginRight: 6 }}>↳</span>
+                            ) : null}
+                            {c.name}
+                          </div>
+
+                          <form
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              try {
+                                const r = cmdRenameCategory({
+                                  categoryId: c.categoryId,
+                                  name: getRenameDraft(c.categoryId, c.name),
+                                });
+                                void handleAppend(r);
+                              } catch (e2) {
+                                setErr({
+                                  message:
+                                    e2 instanceof Error ? e2.message : "Failed to rename category",
+                                });
+                              }
+                            }}
+                            style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                            <input
+                              value={getRenameDraft(c.categoryId, c.name)}
+                              onChange={(e) => setRenameDraft(c.categoryId, e.target.value)}
+                              aria-label={`Rename ${c.name}`}
+                              style={{ width: 220 }}
+                            />
+                            <button type="submit">Rename</button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const ok = window.confirm(
+                                  c.archived ? "Unarchive this category?" : "Archive this category?"
+                                );
+                                if (!ok) return;
+                                try {
+                                  const r = cmdArchiveCategory({
+                                    categoryId: c.categoryId,
+                                    archived: !c.archived,
+                                  });
+                                  void handleAppend(r);
+                                } catch (e2) {
+                                  setErr({
+                                    message:
+                                      e2 instanceof Error
+                                        ? e2.message
+                                        : "Failed to archive category",
+                                  });
+                                }
+                              }}>
+                              {c.archived ? "Unarchive" : "Archive"}
+                            </button>
+                          </form>
+
+                          {c.depth === 0 && (
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: 8,
+                                alignItems: "center",
+                                marginTop: 6,
+                              }}>
+                              {newSubcatParentId === c.categoryId ? (
+                                <>
+                                  <input
+                                    value={newSubcatName}
+                                    onChange={(e) => setNewSubcatName(e.target.value)}
+                                    placeholder="New subcategory name"
+                                    aria-label={`New subcategory under ${c.name}`}
+                                    style={{ width: 220 }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      try {
+                                        const created = cmdCreateCategory(newSubcatName);
+                                        void handleAppend(created);
+
+                                        const reparent = cmdReparentCategory({
+                                          categoryId: created.categoryId,
+                                          parentCategoryId: c.categoryId,
+                                        });
+                                        void handleAppend(reparent);
+
+                                        cancelAddSubcategory();
+                                      } catch (e2) {
+                                        setErr({
+                                          message:
+                                            e2 instanceof Error
+                                              ? e2.message
+                                              : "Failed to create subcategory",
+                                        });
+                                      }
+                                    }}>
+                                    Add
+                                  </button>
+                                  <button type="button" onClick={cancelAddSubcategory}>
+                                    Cancel
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => beginAddSubcategory(c.categoryId)}>
+                                  + Subcategory
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ display: "inline-flex", gap: 6 }}>
+                          <button
+                            type="button"
+                            onClick={() => reorderCategory(c.categoryId, "up")}
+                            disabled={isFirst}
+                            aria-label={`Move ${c.name} up`}>
+                            ↑
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => reorderCategory(c.categoryId, "down")}
+                            disabled={isLast}
+                            aria-label={`Move ${c.name} down`}>
+                            ↓
+                          </button>
+                        </div>
+                      </td>
+
+                      <td
+                        style={{
+                          padding: "8px 4px",
+                          borderBottom: "1px solid #f3f3f3",
+                          textAlign: "right",
+                        }}>
+                        {formatCents(c.budgetedCents)}
+                      </td>
+                      <td
+                        style={{
+                          padding: "8px 4px",
+                          borderBottom: "1px solid #f3f3f3",
+                          textAlign: "right",
+                        }}>
+                        {formatCents(c.activityCents)}
+                      </td>
+                      <td
+                        style={{
+                          padding: "8px 4px",
+                          borderBottom: "1px solid #f3f3f3",
+                          textAlign: "right",
+                        }}>
+                        {formatCents(c.availableCents)}
+                      </td>
+                      <td style={{ padding: "8px 4px", borderBottom: "1px solid #f3f3f3" }}>
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            try {
+                              const cents = eurosToCents(getBudgetInput(c.categoryId));
+                              const r = cmdAssignBudget({
+                                monthKey,
+                                categoryId: c.categoryId,
+                                amountCents: cents,
+                              });
+                              void handleAppend(r);
+                              setBudgetInput(c.categoryId, "");
+                            } catch (e2) {
+                              setErr({
+                                message: e2 instanceof Error ? e2.message : "Invalid budget amount",
+                              });
+                            }
+                          }}
+                          style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <input
+                            value={getBudgetInput(c.categoryId)}
+                            onChange={(e) => setBudgetInput(c.categoryId, e.target.value)}
+                            placeholder="€"
+                            aria-label={`Assign budget for ${c.name}`}
+                            style={{ width: 110 }}
+                          />
+                          <button type="submit">Assign</button>
+                        </form>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -395,9 +709,9 @@ export default function App() {
               <select
                 value={expenseCategoryId}
                 onChange={(e) => setExpenseCategoryId(e.target.value)}>
-                {snapshot.categories.map((c) => (
+                {activeCategoriesView.map((c) => (
                   <option key={c.categoryId} value={c.categoryId}>
-                    {c.name}
+                    {categoryLabelById.get(c.categoryId) ?? c.name}
                   </option>
                 ))}
               </select>
@@ -652,9 +966,7 @@ export default function App() {
         </section>
       </main>
 
-      <footer style={{ marginTop: 24, opacity: 0.7, fontSize: 12 }}>
-        Phase 1 Slice 1: offline-only records → deterministic projection.
-      </footer>
+      <footer style={{ marginTop: 24, opacity: 0.7, fontSize: 12 }}>Phase 1 Slice 4.</footer>
     </div>
   );
 }

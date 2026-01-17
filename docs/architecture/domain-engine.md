@@ -12,6 +12,10 @@ The app stores immutable `DomainRecord` items such as:
 - `BudgetAssigned` (monthKey, categoryId, amountCents)
 - `TransactionVoided` (transactionId)
 - `TransactionCorrected` (transactionId, replacement payload)
+- `CategoryRenamed` (categoryId, name)
+- `CategoryArchived` (categoryId, archived)
+- `CategoryReordered` (orderedCategoryIds snapshot)
+- `CategoryReparented` (categoryId, parentCategoryId?)
 
 To render a month, the UI:
 1) loads all records from IndexedDB
@@ -56,9 +60,26 @@ Transactions are append-only. To derive the effective transaction stream:
 Ordering / “latest” is determined by the global deterministic ordering rule (ADR-0004).
 Semantics are defined in ADR-0005.
 
+## Effective category resolution
+
+For each `categoryId`:
+
+- Base name is from `CategoryCreated`.
+- Effective name is the latest `CategoryRenamed.name` (if any).
+- Effective archive state is the latest `CategoryArchived.archived` (if any).
+- Effective parent is the latest `CategoryReparented.parentCategoryId` (if any); `undefined` means top-level.
+- Effective display order is determined by the latest `CategoryReordered.orderedCategoryIds` snapshot.
+  - Categories not present in the snapshot are appended in a stable fallback order.
+
+“Latest” is defined by the global deterministic ordering rules (ADR-0004).
+Archived categories may be hidden by the UI, but remain resolvable for historical references.
+
+
 ## References
 
 - ADR-0001 Offline-first
 - ADR-0002 Deterministic domain model
 - ADR-0003 IndexedDB schema and record storage
-- ADR-0004 Record IDs and ordering strategy.md
+- ADR-0004 Record IDs and ordering strategy
+- ADR-0005 Append-only Transaction Corrections (Void + Corrected)
+- ADR 0006 Category Lifecycle, Hierarchy, and Ordering

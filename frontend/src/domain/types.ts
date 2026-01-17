@@ -11,10 +11,14 @@ export type MoneyCents = number;
 
 export type DomainRecord =
   | CategoryCreated
+  | CategoryRenamed
+  | CategoryArchived
+  | CategoryReordered
   | TransactionCreated
   | BudgetAssigned
   | TransactionVoided
-  | TransactionCorrected;
+  | TransactionCorrected
+  | CategoryReparented;
 
 export type CategoryCreated = {
   type: "CategoryCreated";
@@ -78,4 +82,39 @@ export type TransactionCorrected = {
     payee?: string;
     memo?: string;
   };
+};
+
+export type CategoryRenamed = {
+  type: "CategoryRenamed";
+  id: RecordId;
+  createdAt: IsoDateTime;
+
+  categoryId: CategoryId;
+  name: string;
+};
+
+export type CategoryArchived = {
+  type: "CategoryArchived";
+  id: RecordId;
+  createdAt: IsoDateTime;
+
+  categoryId: CategoryId;
+  archived: boolean;
+};
+
+export type CategoryReordered = {
+  type: "CategoryReordered";
+  id: RecordId;
+  createdAt: IsoDateTime;
+
+  orderedCategoryIds: CategoryId[];
+};
+
+export type CategoryReparented = {
+  type: "CategoryReparented";
+  id: RecordId;
+  createdAt: IsoDateTime;
+
+  categoryId: CategoryId;
+  parentCategoryId?: CategoryId; // undefined = top-level
 };

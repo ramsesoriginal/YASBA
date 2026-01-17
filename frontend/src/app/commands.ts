@@ -1,5 +1,8 @@
 import type {
   CategoryCreated,
+  CategoryArchived,
+  CategoryRenamed,
+  CategoryReordered,
   TransactionCreated,
   CategoryId,
   MoneyCents,
@@ -8,6 +11,7 @@ import type {
   MonthKey,
   TransactionVoided,
   TransactionCorrected,
+  CategoryReparented,
 } from "../domain/types";
 
 function nowIso(): IsoDateTime {
@@ -133,5 +137,70 @@ export function cmdCorrectTransaction(params: {
       payee: params.payee?.trim() ? params.payee.trim() : undefined,
       memo: params.memo?.trim() ? params.memo.trim() : undefined,
     },
+  };
+}
+
+export function cmdRenameCategory(params: { categoryId: string; name: string }): CategoryRenamed {
+  const categoryId = params.categoryId.trim();
+  const name = params.name.trim();
+  if (!categoryId) throw new Error("categoryId is required");
+  if (!name) throw new Error("name is required");
+
+  return {
+    type: "CategoryRenamed",
+    id: newId(),
+    createdAt: nowIso(),
+    categoryId,
+    name,
+  };
+}
+
+export function cmdArchiveCategory(params: {
+  categoryId: string;
+  archived: boolean;
+}): CategoryArchived {
+  const categoryId = params.categoryId.trim();
+  if (!categoryId) throw new Error("categoryId is required");
+
+  return {
+    type: "CategoryArchived",
+    id: newId(),
+    createdAt: nowIso(),
+    categoryId,
+    archived: params.archived,
+  };
+}
+
+export function cmdReorderCategories(orderedCategoryIds: string[]): CategoryReordered {
+  if (!Array.isArray(orderedCategoryIds) || orderedCategoryIds.length === 0) {
+    throw new Error("orderedCategoryIds must be a non-empty array");
+  }
+
+  return {
+    type: "CategoryReordered",
+    id: newId(),
+    createdAt: nowIso(),
+    orderedCategoryIds: orderedCategoryIds.map((x) => x.trim()).filter(Boolean),
+  };
+}
+
+export function cmdReparentCategory(params: {
+  categoryId: string;
+  parentCategoryId?: string;
+}): CategoryReparented {
+  const categoryId = params.categoryId.trim();
+  if (!categoryId) throw new Error("categoryId is required");
+
+  const parentCategoryId = params.parentCategoryId?.trim();
+  if (parentCategoryId && parentCategoryId === categoryId) {
+    throw new Error("category cannot be its own parent");
+  }
+
+  return {
+    type: "CategoryReparented",
+    id: newId(),
+    createdAt: nowIso(),
+    categoryId,
+    parentCategoryId: parentCategoryId || undefined,
   };
 }
