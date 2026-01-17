@@ -110,6 +110,23 @@ function projectMonthBaseFromOrdered(
     }
   }
 
+  const latestCorrectionByTxId = new Map<
+    string,
+    {
+      occurredAt: IsoDateTime;
+      amountCents: MoneyCents;
+      categoryId?: string;
+      payee?: string;
+      memo?: string;
+    }
+  >();
+
+  for (const r of ordered) {
+    if (r.type === "TransactionCorrected") {
+      latestCorrectionByTxId.set(r.transactionId, r.replacement);
+    }
+  }
+
   for (const r of ordered) {
     if (r.type === "CategoryCreated") {
       const existing = categoriesById.get(r.categoryId);
@@ -138,18 +155,24 @@ function projectMonthBaseFromOrdered(
 
     if (voidedTxIds.has(r.id)) continue;
 
-    assertMoneyCents(r.amountCents);
-    if (monthKeyFromIso(r.occurredAt) !== monthKey) continue;
+    const corr = latestCorrectionByTxId.get(r.id);
 
-    const amount = r.amountCents;
+    const occurredAt = corr?.occurredAt ?? r.occurredAt;
+    const amount = corr?.amountCents ?? r.amountCents;
+    const categoryId = corr?.categoryId ?? r.categoryId;
+    // const payee = corr?.payee ?? r.payee;
+    // const memo = corr?.memo ?? r.memo;
+
+    assertMoneyCents(amount);
+    if (monthKeyFromIso(occurredAt) !== monthKey) continue;
 
     // Uncategorized inflow contributes to ReadyToAssign
-    if (!r.categoryId) {
+    if (!categoryId) {
       if (amount > 0) inflowUncategorized += amount;
       continue;
     }
 
-    const cat = ensureCategory(categoriesById, r.categoryId, "(uncategorized category)");
+    const cat = ensureCategory(categoriesById, categoryId, "(uncategorized category)");
     cat.activityCents += amount;
   }
 

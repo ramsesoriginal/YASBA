@@ -13,7 +13,8 @@ export type DomainRecord =
   | CategoryCreated
   | TransactionCreated
   | BudgetAssigned
-  | TransactionVoided;
+  | TransactionVoided
+  | TransactionCorrected;
 
 export type CategoryCreated = {
   type: "CategoryCreated";
@@ -62,4 +63,19 @@ export type TransactionVoided = {
   createdAt: IsoDateTime;
 
   transactionId: RecordId; // references TransactionCreated.id
+};
+
+export type TransactionCorrected = {
+  type: "TransactionCorrected";
+  id: RecordId;
+  createdAt: IsoDateTime;
+
+  transactionId: RecordId; // references TransactionCreated.id
+  replacement: {
+    occurredAt: IsoDateTime;
+    amountCents: MoneyCents;
+    categoryId?: CategoryId;
+    payee?: string;
+    memo?: string;
+  };
 };
