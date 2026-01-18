@@ -19,6 +19,7 @@ import { formatCents } from "./app/moneyFormat";
 import { listMonthTransactions } from "./domain/views/monthTransactions";
 import { listCategories } from "./domain/views/categoriesView";
 import { projectSpendingByCategory } from "./domain/projectors/projectSpendingByCategory";
+import { envelopeToJson, makeExportEnvelopeV1 } from "./app/exportImport";
 
 type UiError = { message: string };
 
@@ -209,6 +210,20 @@ export default function App() {
     [spendingRows]
   );
 
+  function downloadTextFile(filename: string, text: string, mime = "application/json") {
+    const blob = new Blob([text], { type: mime });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    URL.revokeObjectURL(url);
+  }
+
   async function handleAppend(record: DomainRecord) {
     setErr(null);
     try {
@@ -340,6 +355,21 @@ export default function App() {
             aria-label="Select month"
           />
         </label>
+
+        <button
+          type="button"
+          onClick={() => {
+            try {
+              const exportedAt = new Date().toISOString();
+              const env = makeExportEnvelopeV1({ records, exportedAt });
+              const json = envelopeToJson(env);
+              downloadTextFile("yasba-export.json", json);
+            } catch (e) {
+              setErr({ message: e instanceof Error ? e.message : "Export failed" });
+            }
+          }}>
+          Export JSON
+        </button>
       </header>
 
       {err && (
