@@ -75,10 +75,10 @@ Phase 0 (repo scaffolding, CI, tooling, docs baseline) is complete and tagged as
 - ✅ Slice 3 — Transaction workflow polish (append-only edits/corrections)
 - ✅ Slice 4 — Category management (subcategories, rename, archive, ordering)
 - ✅ Slice 5 — Reports (spending per category/month)
-- ⏭️ Slice 6 — Import/Export JSON
-- Slice 7 — MVP hardening (a11y, UX polish, docs, release v0.2.0)
+- ✅ Slice 6 — Import/Export JSON
+- ⏭️ Slice 7 — MVP hardening (a11y, UX polish, docs, release v0.2.0)
 
-### What works right now (Slice 5)
+### What works right now (Slice 6)
 
 - Offline-only persistence via **IndexedDB** (append-only record log)
 - Deterministic projections from immutable records
@@ -86,11 +86,13 @@ Phase 0 (repo scaffolding, CI, tooling, docs baseline) is complete and tagged as
   - create categories
   - add income (uncategorized inflow → “Ready to Assign”)
   - add expenses (categorized outflows)
+  - see per-category **Activity** and **Available**
+  - refresh the page and data persists
   - assign budgets per category/month
   - rollover: previous month Available carries forward (supports planning future months)
-  - **transaction list for the selected month**
-  - **void a transaction** (append-only “delete”)
-  - **edit a transaction** via append-only corrections (amount/date/category/payee/memo)
+  - transaction list for the selected month
+  - void a transaction (append-only “delete”)
+  - edit a transaction via append-only corrections (amount/date/category/payee/memo)
 - Category management (append-only, deterministic):
   - Rename categories
   - Archive / unarchive categories
@@ -101,6 +103,11 @@ Phase 0 (repo scaffolding, CI, tooling, docs baseline) is complete and tagged as
   - Spending by category for the selected month (offline, deterministic)
   - Hierarchy-aware labels (e.g. `Groceries › Snacks`)
   - Parent categories include rolled-up totals from subcategories
+- Import / Export:
+  - Export the full append-only record log as a versioned JSON file
+  - Import validates format, version, and record structure
+  - Deterministic ordering is preserved on export and import
+  - Designed for backup, inspection, and restore
 
 
 ### What is explicitly out of scope (Phase 1)
@@ -150,6 +157,17 @@ Reports are derived from the record log (no stored aggregates).
 They respect transaction correction and void semantics:
 - void wins
 - latest correction wins deterministically
+
+### Import / Export semantics
+
+YASBA supports exporting and importing the complete append-only record log.
+
+- Export produces a versioned JSON envelope containing all domain records
+- Records are sorted deterministically (createdAt → id)
+- Import validates the file format, version, and record structure
+- Import replaces the local dataset entirely (no merge semantics in Phase 1)
+
+This ensures backups and restores are deterministic, inspectable, and safe.
 
 
 ---
