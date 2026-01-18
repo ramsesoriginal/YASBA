@@ -18,6 +18,7 @@ import { currentMonthKey, isoFromDateInput, todayIsoDate } from "./app/month";
 import { formatCents } from "./app/moneyFormat";
 import { listMonthTransactions } from "./domain/views/monthTransactions";
 import { listCategories } from "./domain/views/categoriesView";
+import { projectSpendingByCategory } from "./domain/projectors/projectSpendingByCategory";
 
 type UiError = { message: string };
 
@@ -195,6 +196,17 @@ export default function App() {
   const categoryOptions = useMemo(
     () => activeCategoriesView.map((c) => ({ id: c.categoryId, name: c.name })),
     [activeCategoriesView]
+  );
+
+  const spendingRows = useMemo(() => {
+    const rows = projectSpendingByCategory(records, monthKey);
+    // hide zero-spend (shouldn’t exist, but defensive)
+    return rows.filter((r) => r.spentCents > 0);
+  }, [records, monthKey]);
+
+  const spendingTotalCents = useMemo(
+    () => spendingRows.reduce((sum, r) => sum + r.spentCents, 0),
+    [spendingRows]
   );
 
   async function handleAppend(record: DomainRecord) {
@@ -960,6 +972,63 @@ export default function App() {
                     </>
                   );
                 })}
+              </tbody>
+            </table>
+          )}
+        </section>
+
+        <section style={{ marginTop: 24 }}>
+          <h2 style={{ margin: "16px 0 8px" }}>Reports</h2>
+
+          <h3 style={{ margin: "12px 0 8px" }}>Spending by category</h3>
+
+          {spendingRows.length === 0 ? (
+            <p style={{ opacity: 0.75 }}>No categorized spending in this month.</p>
+          ) : (
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th
+                    style={{
+                      textAlign: "left",
+                      padding: "8px 4px",
+                      borderBottom: "1px solid #eee",
+                    }}>
+                    Category
+                  </th>
+                  <th
+                    style={{
+                      textAlign: "right",
+                      padding: "8px 4px",
+                      borderBottom: "1px solid #eee",
+                    }}>
+                    Spent
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {spendingRows.map((r) => (
+                  <tr key={r.categoryId}>
+                    <td style={{ padding: "8px 4px", borderBottom: "1px solid #f3f3f3" }}>
+                      {categoryLabelById.get(r.categoryId) ?? r.name}
+                    </td>
+                    <td
+                      style={{
+                        padding: "8px 4px",
+                        borderBottom: "1px solid #f3f3f3",
+                        textAlign: "right",
+                      }}>
+                      {formatCents(r.spentCents)}
+                    </td>
+                  </tr>
+                ))}
+
+                <tr>
+                  <td style={{ padding: "10px 4px", fontWeight: 600 }}>Total</td>
+                  <td style={{ padding: "10px 4px", textAlign: "right", fontWeight: 600 }}>
+                    {formatCents(spendingTotalCents)}
+                  </td>
+                </tr>
               </tbody>
             </table>
           )}

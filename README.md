@@ -74,11 +74,11 @@ Phase 0 (repo scaffolding, CI, tooling, docs baseline) is complete and tagged as
 - ✅ Slice 2 — Budget assignment + rollover + plan future months
 - ✅ Slice 3 — Transaction workflow polish (append-only edits/corrections)
 - ✅ Slice 4 — Category management (subcategories, rename, archive, ordering)
-- ⏭️ Slice 5 — Reports (spending per category/month)
-- Slice 6 — Import/Export JSON
+- ✅ Slice 5 — Reports (spending per category/month)
+- ⏭️ Slice 6 — Import/Export JSON
 - Slice 7 — MVP hardening (a11y, UX polish, docs, release v0.2.0)
 
-### What works right now (Slice 3)
+### What works right now (Slice 5)
 
 - Offline-only persistence via **IndexedDB** (append-only record log)
 - Deterministic projections from immutable records
@@ -97,6 +97,10 @@ Phase 0 (repo scaffolding, CI, tooling, docs baseline) is complete and tagged as
   - Ordering controls (up/down) persisted via reorder snapshots
   - Subcategories (parent/child hierarchy), shown grouped in the UI
   - Category pickers show hierarchical labels (e.g. `Groceries › Snacks`)
+- Reports:
+  - Spending by category for the selected month (offline, deterministic)
+  - Hierarchy-aware labels (e.g. `Groceries › Snacks`)
+  - Parent categories include rolled-up totals from subcategories
 
 
 ### What is explicitly out of scope (Phase 1)
@@ -140,6 +144,12 @@ Categories are created once and never mutated in-place. Changes are represented 
 
 Archived categories remain resolvable by ID so historical transactions and reports stay consistent.
 
+### Report semantics
+
+Reports are derived from the record log (no stored aggregates).
+They respect transaction correction and void semantics:
+- void wins
+- latest correction wins deterministically
 
 
 ---
