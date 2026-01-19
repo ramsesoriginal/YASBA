@@ -108,7 +108,9 @@ Phase 0 (repo scaffolding, CI, tooling, docs baseline) is complete and tagged as
   - Import validates format, version, and record structure
   - Deterministic ordering is preserved on export and import
   - Designed for backup, inspection, and restore
-
+  - Import is “replace local dataset”
+  - Requires explicit confirmation
+  - No merge semantics in Phase 1
 
 ### What is explicitly out of scope (Phase 1)
 

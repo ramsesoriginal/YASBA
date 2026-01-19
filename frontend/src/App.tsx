@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import type { DomainRecord } from "./domain/types";
 import { projectMonth } from "./domain/projectors/projectMonth";
-import { appendRecord, listAllRecords } from "./storage";
+import { appendRecord, listAllRecords, replaceAllRecords } from "./storage";
 import {
   cmdAddExpense,
   cmdAddIncome,
@@ -19,7 +19,7 @@ import { formatCents } from "./app/moneyFormat";
 import { listMonthTransactions } from "./domain/views/monthTransactions";
 import { listCategories } from "./domain/views/categoriesView";
 import { projectSpendingByCategory } from "./domain/projectors/projectSpendingByCategory";
-import { envelopeToJson, makeExportEnvelopeV1 } from "./app/exportImport";
+import { envelopeToJson, makeExportEnvelopeV1, parseImportJsonV1 } from "./app/exportImport";
 
 type UiError = { message: string };
 
@@ -55,6 +55,16 @@ export default function App() {
 
   const [editingTxId, setEditingTxId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<EditDraft | null>(null);
+
+  const [importCandidate, setImportCandidate] = useState<{
+    filename: string;
+    exportedAt: string;
+    recordCount: number;
+    records: DomainRecord[];
+  } | null>(null);
+
+  const [importError, setImportError] = useState<string | null>(null);
+  const importFileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -334,6 +344,56 @@ export default function App() {
     }
   }
 
+  async function handleSelectImportFile(file: File) {
+    setImportError(null);
+    setImportCandidate(null);
+
+    try {
+      const text = await file.text();
+      const env = parseImportJsonV1(text);
+
+      setImportCandidate({
+        filename: file.name,
+        exportedAt: env.exportedAt,
+        recordCount: env.records.length,
+        records: env.records,
+      });
+    } catch (e) {
+      setImportError(e instanceof Error ? e.message : "Import failed");
+    }
+  }
+
+  async function handleApplyImport() {
+    if (!importCandidate) return;
+
+    const ok = window.confirm(
+      `This will overwrite your local YASBA data with "${importCandidate.filename}". Continue?`
+    );
+    if (!ok) return;
+
+    setErr(null);
+    setLoading(true);
+    try {
+      await replaceAllRecords(importCandidate.records);
+
+      // Reload from IndexedDB to ensure app state matches persistence
+      const all = await listAllRecords();
+      setRecords(all);
+
+      // Clear import candidate
+      setImportCandidate(null);
+      setImportError(null);
+
+      // Optional: reset transient UI bits that may be inconsistent post-import
+      setEditingTxId(null);
+      setEditDraft(null);
+    } catch (e) {
+      setErr({ message: e instanceof Error ? e.message : "Failed to apply import" });
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div
       style={{ maxWidth: 960, margin: "0 auto", padding: 16, fontFamily: "system-ui, sans-serif" }}>
@@ -370,6 +430,22 @@ export default function App() {
           }}>
           Export JSON
         </button>
+        {/* IMPORT (file picker trigger) */}
+        <button type="button" onClick={() => importFileInputRef.current?.click()}>
+          Import JSON
+        </button>
+
+        <input
+          ref={importFileInputRef}
+          type="file"
+          accept="application/json"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void handleSelectImportFile(file);
+            e.currentTarget.value = ""; // allow selecting same file again
+          }}
+        />
       </header>
 
       {err && (
@@ -387,6 +463,28 @@ export default function App() {
           </div>
         </div>
       </section>
+
+      {importError && <div style={{ color: "red", marginTop: 8 }}>Import error: {importError}</div>}
+
+      {importCandidate && (
+        <div
+          style={{
+            marginTop: 8,
+            padding: 8,
+            border: "1px solid #ccc",
+            background: "#fff6e5",
+          }}>
+          <div>
+            Import file: <strong>{importCandidate.filename}</strong>
+          </div>
+          <div>Exported at: {new Date(importCandidate.exportedAt).toLocaleString()}</div>
+          <div>Records: {importCandidate.recordCount}</div>
+
+          <button type="button" style={{ marginTop: 8 }} onClick={handleApplyImport}>
+            Apply import (overwrite local data)
+          </button>
+        </div>
+      )}
 
       <main style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16, marginTop: 16 }}>
         <section style={{ padding: 12, border: "1px solid #ddd", borderRadius: 8 }}>

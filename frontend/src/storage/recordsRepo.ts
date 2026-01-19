@@ -52,3 +52,22 @@ export async function clearAllRecords(): Promise<void> {
     db.close();
   }
 }
+
+export async function replaceAllRecords(records: DomainRecord[]): Promise<void> {
+  const db = await openDb();
+
+  try {
+    await withTx(db, [STORES.records], "readwrite", async (tx) => {
+      const store = tx.objectStore(STORES.records);
+
+      // Clear + insert within the same transaction
+      store.clear();
+
+      for (const r of records) {
+        store.add(r);
+      }
+    });
+  } finally {
+    db.close();
+  }
+}
